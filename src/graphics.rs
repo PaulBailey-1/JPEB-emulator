@@ -1,120 +1,89 @@
 use piston_window::*;
 use ::image::{ImageBuffer, Rgba};
+use std::sync::{Arc, Mutex, RwLock};
 
+use crate::memory::*;
 
-// an 80x60 framebuffer of 8-bit tile values
-pub struct FrameBuffer {
-    pub width: u32, // number of tiles in the x direction
-    pub height: u32, // number of tiles in the y direction
-    pub tiles: Vec<u16>,
-    pub buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
-    pub texture: G2dTexture,
+pub struct Graphics {
+    window: PistonWindow,
+    buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
+    texture: G2dTexture,
+    frame_buffer: Arc<RwLock<FrameBuffer>>,
+    tile_map: Arc<RwLock<TileMap>>
 }
 
-impl FrameBuffer {
-    pub fn new(width: u32, height: u32, mut window: PistonWindow) -> Self {
-        window.set_ups(60); // Set updates per second
+impl Graphics {
 
-        let buffer: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::new(width, height);
+    pub fn new(frame_buffer: Arc<RwLock<FrameBuffer>>, tile_map: Arc<RwLock<TileMap>>) -> Graphics {
+        let mut window: PistonWindow = WindowSettings::new("JPEB", [FRAME_WIDTH, FRAME_HEIGHT])
+            .exit_on_esc(true)
+            .build()
+            .unwrap();
+        window.set_max_fps(60);
+        window.set_ups(60);
 
+        let buffer: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::new(FRAME_WIDTH, FRAME_HEIGHT);
         let texture = Texture::from_image(
             &mut window.create_texture_context(),
             &buffer,
             &TextureSettings::new(),
         ).unwrap();
 
-        FrameBuffer {
-            width,
-            height,
-            tiles: vec![0; ((width * height)/2) as usize],
+        Graphics { 
+            window,
             buffer,
             texture,
+            frame_buffer,
+            tile_map
         }
     }
 
-    pub fn set_tile_pair(&mut self, i: u32, tile_pair_value: u16) {
-        // we're packing 2 tiles into 1 byte
-        if i < self.tiles.len() as u32 {
-            self.tiles[i as usize] = tile_pair_value;
-            let id1 = (tile_pair_value & 0x8F) as u8;
-            let id2 = ((tile_pair_value >> 8) & 0x8F) as u8;
-            // we now get the actual tile bitmaps from a list of bitmaps
-            // however, for now we will just set the tile to a solid color
-            let x1 = (i % self.width) * 8;
-            let x2 = ((i + 1) % self.width) * 8;
-            let y = (i / self.width) * 8;
-            for dy in 0..8 {
-                for dx in 0..8 {
-                    let px1 = (x1 + dx) as u32;
-                    let px2 = (x2 + dx) as u32;
-                    let py = (y + dy) as u32;
-
-                    // set the pixel color based on the tile value
-                    // for now, we'll just use a solid color
-                    let color1 = [(id1%4)*64, (id1/16%4)*64, (id1/64%4)*64, 255];
-                    let color2 = [(id2%4)*64, (id2/16%4)*64, (id2/64%4)*64, 255];
-                    self.buffer.put_pixel(px1, py, Rgba(color1));
-                    self.buffer.put_pixel(px2, py, Rgba(color2));
+    pub fn start(&mut self, finished: Arc<Mutex<bool>>, stay_open: bool) {
+        while let Some(event) = self.window.next() {
+            match event {
+                Event::Loop(Loop::Update(_args)) => {
+                    // Automatically closes window on program finish
+                    if !stay_open && *finished.lock().unwrap() {
+                        self.window.set_should_close(true);
+                    }
+                    self.update();
                 }
-            }
-        } else {
-            panic!("Tile coordinates out of bounds");
-        }
-    }
-
-    pub fn get_tile_pair(&self, i: u32) -> u16 {
-        // we're packing 2 tiles into 1 byte
-        if i < self.tiles.len() as u32 {
-            self.tiles[i as usize]
-        } else {
-            panic!("Tile coordinates out of bounds");
-        }
-    }
-}
-
-
-pub struct Tile {
-    pub pixels: Vec<u8>, // an 8x8 tile of pixels
-}
-
-
-pub fn main_() {
-    let (width, height) = (640, 480);
-    let mut window: PistonWindow = WindowSettings::new("JPEB", [width, height])
-        .exit_on_esc(true)
-        .build()
-        .unwrap();
-
-    let mut buffer: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::new(width, height);
-
-    let cx = width as i32 / 2;
-    let cy = height as i32 / 2;
-    let radius = 100;
-
-    // Manually draw a filled circle using the midpoint circle algorithm (or brute-force)
-    for y in -radius..=radius {
-        for x in -radius..=radius {
-            if x * x + y * y <= radius * radius {
-                let px = (cx + x) as u32;
-                let py = (cy + y) as u32;
-                if px < width && py < height {
-                    buffer.put_pixel(px, py, Rgba([255, 0, 0, 255])); // Red circle
+                Event::Loop(Loop::Render(_args)) => {
+                    self.window.draw_2d(&event, |context, graphics, _| {
+                        clear([0.0; 4], graphics); // black background
+                        image(&self.texture, context.transform, graphics);
+                    });
                 }
+                _ => {}
             }
         }
     }
 
-    let mut texture_context = window.create_texture_context();
-    let texture = Texture::from_image(
-        &mut texture_context,
-        &buffer,
-        &TextureSettings::new(),
-    ).unwrap();
-
-    while let Some(event) = window.next() {
-        window.draw_2d(&event, |context, graphics, _| {
-            clear([0.0; 4], graphics); // black background
-            image(&texture, context.transform, graphics);
-        });
+    fn update(&mut self) {
+        // Updates buffer from emulated frame buffer and tile map
+        let fb = self.frame_buffer.read().unwrap();
+        let tile_map = self.tile_map.read().unwrap();
+        for x in 0..fb.width {
+            for y in 0..fb.height {
+                let tile_ptr = fb.get_tile(x, y);
+                let tile = &tile_map.tiles[tile_ptr as usize];
+                for px in 0..TILE_SIZE {
+                    for py in 0..TILE_SIZE {
+                        let tile_pixel: u16 = tile.pixels[(px + py * TILE_SIZE) as usize];
+                        let red = (tile_pixel & 0x000f) as u8 * 16;
+                        let green = (tile_pixel & 0x00f0 >> 4) as u8 * 16;
+                        let blue = (tile_pixel & 0x0f00 >> 8) as u8 * 16;
+                        let pixel = Rgba([red, green, blue, 255]);
+                        self.buffer.put_pixel(x * TILE_SIZE + px, y * TILE_SIZE + py, pixel);
+                    }
+                }
+            }
+        }
+        // Updates texture from buffer
+        self.texture = Texture::from_image(
+            &mut self.window.create_texture_context(),
+            &self.buffer,
+            &TextureSettings::new(),
+        ).unwrap();
     }
 }
