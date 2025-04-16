@@ -24,7 +24,7 @@ impl Graphics {
 
         let buffer: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::new(FRAME_WIDTH, FRAME_HEIGHT);
         let texture = Texture::from_image(
-            &mut texture_context,
+            &mut window.create_texture_context(),
             &buffer,
             &TextureSettings::new(),
         ).unwrap();

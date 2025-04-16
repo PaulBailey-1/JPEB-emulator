@@ -73,6 +73,7 @@ impl Memory {
 }
 
 impl FrameBuffer {
+    // width and height are in pixels
     pub fn new(frame_width: u32, frame_height: u32) -> Self {
         let width = frame_width / TILE_SIZE;
         let height = frame_height / TILE_SIZE;
