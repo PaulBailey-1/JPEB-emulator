@@ -39,7 +39,11 @@ impl Emulator {
 
     let mut graphics: Option<Graphics> = None;
     if with_graphics {
-      graphics = Some(Graphics::new(self.memory.get_frame_buffer(), self.memory.get_tile_map()));
+      graphics = Some(Graphics::new(
+        self.memory.get_frame_buffer(), 
+        self.memory.get_tile_map(), 
+        self.memory.get_io_buffer()
+      ));
     }
 
     // Return value and termination signal

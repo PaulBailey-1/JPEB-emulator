@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 
 use std::sync::{Arc, RwLock};
 
@@ -11,11 +12,13 @@ const TILE_MAP_START : usize = 0xc000;
 const TILE_MAP_SIZE : usize = 0x2000;
 const FRAME_BUFFER_START : usize = 0xe000;
 const FRAME_BUFFER_SIZE : usize = 0x1000;
+const IO_BUFFER_START : usize = 0xFFFF;
 
 pub struct Memory {
   ram: Vec<u16>,   
   frame_buffer: Arc<RwLock<FrameBuffer>>,
-  tile_map: Arc<RwLock<TileMap>>
+  tile_map: Arc<RwLock<TileMap>>, 
+  io_buffer: Arc<RwLock<VecDeque<u16>>>
 }
 
 // an 80x60 framebuffer of 8-bit tile values
@@ -44,12 +47,14 @@ impl Memory {
         Memory {
             ram,
             frame_buffer: Arc::new(RwLock::new(FrameBuffer::new(FRAME_WIDTH, FRAME_HEIGHT))),
-            tile_map: Arc::new(RwLock::new(TileMap::new(TILES_NUM as usize)))
+            tile_map: Arc::new(RwLock::new(TileMap::new(TILES_NUM as usize))),
+            io_buffer: Arc::new(RwLock::new(VecDeque::new()))
         }
     }
 
-    pub fn get_frame_buffer(&self) -> Arc<RwLock<FrameBuffer>> { return Arc::clone(&self.frame_buffer) }
-    pub fn get_tile_map(&self) -> Arc<RwLock<TileMap>> { return Arc::clone(&self.tile_map) }
+    pub fn get_frame_buffer(&self) -> Arc<RwLock<FrameBuffer>> { return Arc::clone(&self.frame_buffer)}
+    pub fn get_tile_map(&self) -> Arc<RwLock<TileMap>> { return Arc::clone(&self.tile_map)}
+    pub fn get_io_buffer(&self) -> Arc<RwLock<VecDeque<u16>>> { return Arc::clone(&self.io_buffer) }
 
     pub fn read(&mut self, addr: usize) -> u16 {
         if addr >= TILE_MAP_START && addr < TILE_MAP_START + TILE_MAP_SIZE {
@@ -57,6 +62,9 @@ impl Memory {
         }
         if addr >= FRAME_BUFFER_START && addr < FRAME_BUFFER_START + FRAME_BUFFER_SIZE {
             return self.frame_buffer.read().unwrap().get_tile_pair((addr - FRAME_BUFFER_START) as u32);
+        }
+        if addr == IO_BUFFER_START {
+            return self.io_buffer.write().unwrap().pop_front().unwrap_or(0);
         }
         return self.ram[addr];
     }
