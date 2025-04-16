@@ -1,7 +1,7 @@
 ## Memory Map (tentative)
 
 0x0000 - 0x9FFF:  
-Code, heap, stack
+Code, heap, stack  
 Code will start at 0x0000, stack at 0x9FFF  
 heap is everything in between
 
@@ -15,5 +15,5 @@ Tilemap. Each tile is 8x8 pixels, and we reserve space for 128
 Framebuffer. Each entry contains two tiles. The plan is to use 640x480 resolution, so we need 4800 tiles = 2400 entries.
 
 0xF000 - 0xFFFF:  
-Other I/O. ps/2 keyboard, vga hscroll and vscroll register are all that is planned for now.
+Other I/O. ps/2 keyboard, vga hscroll and vscroll register are all that is planned for now.  
 ps/2 at 0xF000, hscroll at 0xF001, vscroll at 0xF002
