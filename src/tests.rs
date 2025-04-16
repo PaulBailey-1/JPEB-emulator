@@ -16,6 +16,13 @@ fn sw_lw_test() {
 }
 
 #[test]
+fn swi_test() {
+  let mut cpu = Emulator::new(String::from("src/emu_tests/bin/swi_test.bin"));
+  let result = cpu.run();
+  assert_eq!(result, 15);
+}
+
+#[test]
 fn lui_test() {
   let mut cpu = Emulator::new(String::from("src/emu_tests/bin/lui_test.bin"));
   let result = cpu.run();
