@@ -14,9 +14,11 @@ valid_commands = ["add", "addi", "addc", "sub",
                   "movi", ".fill", ".space",
                   "jmp", "rfe", "rfi", "push", "pop", "clf",
                   "kpsh", "kpop", "bnc", "call", 
-                  "bg", "bge", "bl", "ble"]
+                  "bg", "bge", "bl", "ble", "swi"]
 
-macros = ["movi", ".fill", ".space", "push", "pop", "kpsh", "kpop", "call"]
+macros = ["movi", ".fill", ".space", "push", "pop", "kpsh", "kpop", "call", "swi"]
+
+# types of instructions reg reg imm, reg reg reg, reg reg 
 rri_type = ["addi", "sw", "lw"]
 rrr_type = ["add", "addc", "and", "or", "xor", "nand"]
 rr_type = ["not", "shl", "shr", "rotl",
@@ -391,6 +393,31 @@ def generate_opcode(line_num, tokens, labels, label_addresses, address):
             opcode2 = hex(int(opcode2, 2))[2:].zfill(4) + '\n'
             
             opcode3 = "1111111110000000"
+            opcode3 = hex(int(opcode3, 2))[2:].zfill(4) + '\n'
+            return opcode + opcode2 + opcode3
+        elif operation == "swi":
+            assert len(tokens) == 2, f"Error in line {line_num + 1}: call takes one argument"
+            # convert to: 
+            # swi  rA rB <value>
+            # movi rA <value>
+            # sw   rA rB
+            opcode += "011"
+            assert len(tokens) == 3, f"Error in line {line_num + 1}. swi type operation takes 2 parameters"
+            assert is_reg(tokens[1]), f"Error in line {line_num + 1}. Valid register names are r0, r1, ..., r7"
+            opcode += format(int(tokens[1][1], 0), 'b').zfill(3)
+            opcode += get_imm(line_num, tokens[1], 10, 1, labels, label_addresses, is_movi=1)
+            opcode = hex(int(opcode, 2))[2:].zfill(4) + '\n'
+            
+            opcode2 = "001"
+            opcode2 += format(int(tokens[1][1]), 'b').zfill(3)
+            opcode2 += format(int(tokens[1][1]), 'b').zfill(3)
+            opcode2 += ("0" + get_imm(line_num, tokens[2], 6, 0, labels, label_addresses, is_movi=1))
+            opcode2 = hex(int(opcode2, 2))[2:].zfill(4) + '\n'
+            
+            opcode3 = "100"
+            opcode2 += format(int(tokens[1][1]), 'b').zfill(3)
+            opcode2 += format(int(tokens[1][1]), 'b').zfill(3)
+            opcode2 += ("0" + get_imm(line_num, tokens[2], 6, 0, labels, label_addresses, is_movi=1))
             opcode3 = hex(int(opcode3, 2))[2:].zfill(4) + '\n'
             return opcode + opcode2 + opcode3
         else:
