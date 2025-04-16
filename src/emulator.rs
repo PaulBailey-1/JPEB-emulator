@@ -52,7 +52,6 @@ impl Emulator {
       let finished_clone = Arc::clone(&finished);
       move || {
         while !self.halted {
-          self.memory.write(0xe000 + self.pc as usize, 1); // test showing graphics output
           let instruction = self.memory.read(usize::from(self.pc));
           self.execute(instruction);
         }

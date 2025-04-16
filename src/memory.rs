@@ -66,6 +66,7 @@ impl Memory {
             self.tile_map.write().unwrap().set_tile_word((addr - TILE_MAP_START) as u32, data);
         }
         if addr >= FRAME_BUFFER_START && addr < FRAME_BUFFER_START + FRAME_BUFFER_SIZE {
+            print!("{:#x}\n", addr);
             self.frame_buffer.write().unwrap().set_tile_pair((addr - FRAME_BUFFER_START) as u32, data);
         }
         self.ram[addr] = data;
@@ -88,7 +89,7 @@ impl FrameBuffer {
         if i < self.tile_ptrs.len() as u32 {
             self.tile_ptrs[i as usize] = tile_pair_value;
         } else {
-            panic!("Tile coordinates out of bounds");
+            panic!("Tile coordinates out of bounds: {}", i);
         }
     }
 
