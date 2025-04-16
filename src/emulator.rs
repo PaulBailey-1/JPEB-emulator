@@ -1,6 +1,8 @@
+use crate::memory::Memory;
+
 pub struct Emulator {
   regfile : [u16; 8],
-  ram : Vec<u16>,
+  memory: Memory,
   pc : u16,
   flags : [bool; 4], // flags are: carry | zero | sign | overflow
   halted : bool
@@ -25,7 +27,7 @@ impl Emulator {
 
     Emulator {
       regfile: [0, 0, 0, 0, 0, 0, 0, 0],
-      ram: instructions,
+      memory: Memory::new(instructions),
       pc: 0,
       flags: [false, false, false, false],
       halted: false
@@ -34,7 +36,8 @@ impl Emulator {
 
   pub fn run(&mut self) -> u16 {
     while !self.halted {
-      self.execute(self.ram[usize::from(self.pc)]);
+      let instruction = self.memory.read(usize::from(self.pc));
+      self.execute(instruction);
     }
 
     // return the value in r3
@@ -236,7 +239,7 @@ impl Emulator {
     let imm = Self::sign_ext_7(args & 0x7F);
 
     let address = u16::wrapping_add(self.regfile[usize::from(r_b)], imm);
-    self.ram[usize::from(address)] = self.regfile[usize::from(r_a)];
+    self.memory.write(usize::from(address), self.regfile[usize::from(r_a)]);
 
     self.pc += 1;
   }
@@ -250,7 +253,7 @@ impl Emulator {
     let address = u16::wrapping_add(self.regfile[usize::from(r_b)], imm);
 
     if r_a != 0 {
-      self.regfile[usize::from(r_a)] = self.ram[usize::from(address)];
+      self.regfile[usize::from(r_a)] = self.memory.read(usize::from(address));
     }
 
     self.pc += 1;
