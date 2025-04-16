@@ -179,7 +179,7 @@ def num_bytes(tokens, line):
             assert False, f"Invalid use of .space in line {line}; correct usage is\".space <num_words>\""
     elif tokens[0] in ["push", "pop", "kpsh", "kpop", "movi"]:
         return 2
-    elif tokens[0] == "call":
+    elif tokens[0] in ["call", "swi"]:
         return 3
     else:
         return 1
@@ -342,23 +342,6 @@ def generate_opcode(line_num, tokens, labels, label_addresses, address):
         #    for _ in range(n):
         #        opcode += "0000\n"
         #        return opcode
-        elif operation == "kpsh":
-            # dec sp, then store
-            assert len(tokens) == 2, f"Error in line {line_num + 1}: push takes one argument"
-            temp    = hex(int("0010010011111111", 2))[2:].zfill(4) + '\n'
-            opcode += "1110000010010" 
-            opcode += format(int(tokens[1][1]), 'b').zfill(3)
-            opcode = temp + hex(int(opcode, 2))[2:].zfill(4) + '\n'
-            return opcode
-        elif operation == "kpop":
-            # load, then inc sp
-            assert len(tokens) == 2, f"Error in line {line_num + 1}: pop takes one argument"
-            opcode = "111"
-            opcode += format(int(tokens[1][1]), 'b').zfill(3)
-            opcode += "0010011000"
-            opcode =  hex(int(opcode, 2))[2:].zfill(4) + '\n'
-            opcode += hex(int("0010010010000001", 2))[2:].zfill(4) + '\n'
-            return opcode
         elif operation == "push":
             # dec sp, then store
             assert len(tokens) == 2, f"Error in line {line_num + 1}: push takes one argument"
@@ -395,14 +378,15 @@ def generate_opcode(line_num, tokens, labels, label_addresses, address):
             opcode3 = "1111111110000000"
             opcode3 = hex(int(opcode3, 2))[2:].zfill(4) + '\n'
             return opcode + opcode2 + opcode3
-        elif operation == "swi":
-            # convert to: 
+        elif operation == "swi": 
             # swi  rA rB <value>
+            # convert to:
             # movi rA <value>
             # sw   rA rB
             opcode += "011"
-            assert len(tokens) == 4, f"Error in line {line_num + 1}. swi type operation takes 2 parameters len(token)"
+            assert len(tokens) == 4, f"Error in line {line_num + 1}. swi type operation takes 3 parameters"
             assert is_reg(tokens[1]), f"Error in line {line_num + 1}. Valid register names are r0, r1, ..., r7"
+            assert is_reg(tokens[2]), f"Error in line {line_num + 1}. Valid register names are r0, r1, ..., r7"
             opcode += format(int(tokens[1][1], 0), 'b').zfill(3)
             opcode += get_imm(line_num, tokens[3], 10, 1, labels, label_addresses, is_movi=1)
             opcode = hex(int(opcode, 2))[2:].zfill(4) + '\n'
@@ -415,8 +399,7 @@ def generate_opcode(line_num, tokens, labels, label_addresses, address):
             
             opcode3 = "100"
             opcode3 += format(int(tokens[1][1]), 'b').zfill(3)
-            opcode3 += format(int(tokens[1][1]), 'b').zfill(3)
-            # opcode3 += ("0" + get_imm(line_num, tokens[2], 6, 0, labels, label_addresses, is_movi=1))
+            opcode3 += format(int(tokens[2][1]), 'b').zfill(3)
             opcode3 += "0000000"
             opcode3 = hex(int(opcode3, 2))[2:].zfill(4) + '\n'
             return opcode + opcode2 + opcode3
