@@ -1,10 +1,12 @@
 use std::env;
 use std::process;
 
+pub mod graphics;
 pub mod emulator;
 pub mod tests;
 
 use emulator::Emulator;
+use graphics::main_;
 
 fn main() {
   let args = env::args().collect::<Vec<_>>();
@@ -19,7 +21,6 @@ fn main() {
     println!(""); // print a newline
     process::exit(i32::from(result));
   } else {
-    println!("Usage: bemu file.bin");
-    process::exit(64);
+    main_();
   }
 }
