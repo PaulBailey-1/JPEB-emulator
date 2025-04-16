@@ -6,6 +6,8 @@ https://user.eng.umd.edu/~blj/risc/RiSC-isa.pdf
 
 3 Bit opcodes, 8 registers, 4 flags (Zero, Sign, Carry, Overflow)
 
+Memory is word addressable, each address contains contains a 16 bit word
+
 ## ALU instructions
 opcode is 000
 
