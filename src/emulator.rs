@@ -1,13 +1,19 @@
+use std::sync::{Arc, Mutex};
+use std::thread;
+
+use crate::memory::Memory;
+use crate::graphics::Graphics;
+
 pub struct Emulator {
   regfile : [u16; 8],
-  ram : Vec<u16>,
+  memory: Memory,
   pc : u16,
   flags : [bool; 4], // flags are: carry | zero | sign | overflow
-  halted : bool
+  halted : bool,
 }
 
 impl Emulator {
-  pub fn new(path : String) -> Emulator {
+  pub fn new(path: String) -> Emulator {
     // read in binary file
     let bytes = std::fs::read(path).unwrap();
 
@@ -20,25 +26,48 @@ impl Emulator {
       instructions.push(short);
     }
 
-    // extend array to the size of the address space (2 ^ 16)
-    instructions.resize(65536, 0);
-
     Emulator {
       regfile: [0, 0, 0, 0, 0, 0, 0, 0],
-      ram: instructions,
+      memory: Memory::new(instructions),
       pc: 0,
       flags: [false, false, false, false],
-      halted: false
+      halted: false,
     }
   }
 
-  pub fn run(&mut self) -> u16 {
-    while !self.halted {
-      self.execute(self.ram[usize::from(self.pc)]);
+  pub fn run(mut self, with_graphics: bool) -> u16 {
+
+    let mut graphics: Option<Graphics> = None;
+    if with_graphics {
+      graphics = Some(Graphics::new(self.memory.get_frame_buffer(), self.memory.get_tile_map()));
     }
 
-    // return the value in r3
-    self.regfile[3]
+    // Return value and termination signal
+    let ret: Arc<Mutex<u16>> = Arc::new(Mutex::new(0));
+    let finished: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
+    
+    // Runs emulator on thread because graphics must use main thread
+    let handle = thread::spawn({
+      let ret_clone = Arc::clone(&ret);
+      let finished_clone = Arc::clone(&finished);
+      move || {
+        while !self.halted {
+          self.memory.write(0xe000 + self.pc as usize, 1); // test showing graphics output
+          let instruction = self.memory.read(usize::from(self.pc));
+          self.execute(instruction);
+        }
+        // return the value in r3
+        *ret_clone.lock().unwrap() = self.regfile[3];
+        *finished_clone.lock().unwrap() = true;
+      }
+    });
+
+    if with_graphics {
+      graphics.unwrap().start(finished, true);
+    }
+    handle.join().unwrap();
+
+    return *ret.lock().unwrap();
   }
 
   fn execute(&mut self, instr : u16) {
@@ -236,7 +265,7 @@ impl Emulator {
     let imm = Self::sign_ext_7(args & 0x7F);
 
     let address = u16::wrapping_add(self.regfile[usize::from(r_b)], imm);
-    self.ram[usize::from(address)] = self.regfile[usize::from(r_a)];
+    self.memory.write(usize::from(address), self.regfile[usize::from(r_a)]);
 
     self.pc += 1;
   }
@@ -250,7 +279,7 @@ impl Emulator {
     let address = u16::wrapping_add(self.regfile[usize::from(r_b)], imm);
 
     if r_a != 0 {
-      self.regfile[usize::from(r_a)] = self.ram[usize::from(address)];
+      self.regfile[usize::from(r_a)] = self.memory.read(usize::from(address));
     }
 
     self.pc += 1;

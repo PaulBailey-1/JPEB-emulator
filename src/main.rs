@@ -3,6 +3,8 @@ use std::process;
 
 pub mod graphics;
 pub mod emulator;
+pub mod memory;
+pub mod graphics;
 pub mod tests;
 
 use emulator::Emulator;
@@ -16,8 +18,8 @@ fn main() {
     process::exit(64);
   } else if args.len() == 2 {
     // file to run is passed as a command line argument
-    let mut cpu = Emulator::new(args[1].clone());
-    let result = cpu.run();
+    let cpu = Emulator::new(args[1].clone());
+    let result = cpu.run(true);
     println!(""); // print a newline
     process::exit(i32::from(result));
   } else {
