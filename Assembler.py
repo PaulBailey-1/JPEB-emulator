@@ -7,16 +7,15 @@ valid_commands = ["add", "addi", "addc", "sub",
                   "rotr", "sshr", "shrc", "shlc",
                   "cmp", "nand", "lui", "sw", 
                   "lw", "jalr", "nop", "lli", 
-                  "sys", "mov", "tocr", 
-                  "fmcr", "bz", "bne", "beq",
+                  "sys", "mov", "bz", "bne", "beq",
                   "bp", "bo", "bn", "bc", 
                   "bnz", "ba", "bae", "bb", "bbe", 
                   "movi", ".fill", ".space",
-                  "jmp", "rfe", "rfi", "push", "pop", "clf",
-                  "kpsh", "kpop", "bnc", "call", 
+                  "jmp", "push", "pop",
+                  "bnc", "call", 
                   "bg", "bge", "bl", "ble", "swi"]
 
-macros = ["movi", ".fill", ".space", "push", "pop", "kpsh", "kpop", "call", "swi"]
+macros = ["movi", ".fill", ".space", "push", "pop", "call", "swi"]
 
 # types of instructions reg reg imm, reg reg reg, reg reg 
 rri_type = ["addi", "sw", "lw"]
@@ -49,12 +48,8 @@ instruction_dict = {
     "jalr": "111",
     "nop" : "010",
     "lli" : "001",
-    "rfe" : "111",
-    "rfi" : "111",
     "sys" : "111",
     "mov" : "000",
-    "tocr": "111",
-    "fmcr": "111",
     "bz"  : "110",
     "bp"  : "110",
     "bn"  : "110",
@@ -73,7 +68,6 @@ instruction_dict = {
     "bae" : "110",
     "bb"  : "110",
     "bbe" : "110",
-    "clf" : "000",
 }
 
 alu_dict = {
@@ -119,20 +113,7 @@ branch_dict = {
 
 exception_dict = { 
     "EXIT": "1110000",
-    "PUTCHAR" : "1110001",
-    # next exception will get code 1110010, then 1110011, ...
-
-    "MODE_HALT": "0000010",
-    "EXC_PRIV": "1010101",
-
-    "INT0": "1100000",
-    "INT1": "1100001",
-    "INT2": "1100010",
-    "INT3": "1100011",
-    "INT4": "1100100",
-    "INT5": "1100101",
-    "INT6": "1100110",
-    "INT7": "1100111",
+    # next exception will get code 1110001, then 1110010, ...
 }
 
 def get_imm(line_num, token, bits, side, labels, label_addresses, 
@@ -264,19 +245,6 @@ def generate_opcode(line_num, tokens, labels, label_addresses, address):
             assert tokens[1][:3] != "INT", "Calling an INT results in an infinite loop"
             opcode += "000000"
             opcode += exception_dict[tokens[1]]
-        elif operation == "rfe":
-            assert len(tokens) == 2, f"Error in line {line_num + 1}: rfe takes one argument"
-            assert is_reg(tokens[1]),  f"Error in line {line_num + 1}: Valid register names are r0, r1, ..., r7"
-            opcode += "000"
-            opcode += format(int(tokens[1][1]), 'b').zfill(3)
-            opcode += "0110000"
-        elif operation == "rfi":
-            assert len(tokens) == 3, f"Error in line {line_num + 1}: rfi takes two arguments"
-            assert is_reg(tokens[1]),  f"Error in line {line_num + 1}: Valid register names are r0, r1, ..., r7"
-            assert is_reg(tokens[2]),  f"Error in line {line_num + 1}: Valid register names are r0, r1, ..., r7"
-            opcode += format(int(tokens[2][1]), 'b').zfill(3)
-            opcode += format(int(tokens[1][1]), 'b').zfill(3)
-            opcode += "0110001"
         elif operation == "mov":
             assert len(tokens) == 3, f"Error in line {line_num + 1}: 'mov' takes 2 arguments"
             assert is_reg(tokens[1]), f"Error in line {line_num + 1}: Valid register names are r0, r1, ..., r7"
@@ -284,20 +252,6 @@ def generate_opcode(line_num, tokens, labels, label_addresses, address):
             opcode += format(int(tokens[1][1]), 'b').zfill(3)
             opcode += "0000001"
             opcode += format(int(tokens[2][1]), 'b').zfill(3)
-        elif operation == "tocr":
-            assert len(tokens) == 3, f"Error in line {line_num + 1}: 'tocr' takes 2 arguments"
-            assert is_reg(tokens[1]), f"Error in line {line_num + 1}: Valid register names are r0, r1, ..., r7"
-            assert is_reg(tokens[2]), f"Error in line {line_num + 1}: Valid register names are r0, r1, ..., r7"
-            opcode += format(int(tokens[1][1]), 'b').zfill(3)
-            opcode += format(int(tokens[2][1]), 'b').zfill(3)
-            opcode += "0100001"
-        elif operation == "fmcr":
-            assert len(tokens) == 3, f"Error in line {line_num + 1}: 'fmcr' takes 2 arguments"
-            assert is_reg(tokens[1]), f"Error in line {line_num + 1}: Valid register names are r0, r1, ..., r7"
-            assert is_reg(tokens[2]), f"Error in line {line_num + 1}: Valid register names are r0, r1, ..., r7"
-            opcode += format(int(tokens[1][1]), 'b').zfill(3)
-            opcode += format(int(tokens[2][1]), 'b').zfill(3)
-            opcode += "0100000"
         elif operation == "cmp":
             assert len(tokens) == 3, f"Error in line {line_num + 1}: 'cmp' takes 2 arguments"
             assert is_reg(tokens[1]), f"Error in line {line_num + 1}: Valid register names are r0, r1, ..., r7"
@@ -335,13 +289,15 @@ def generate_opcode(line_num, tokens, labels, label_addresses, address):
         elif operation == ".fill":
             assert len(tokens) == 2, f"Error in line {line_num + 1}: .fill takes one argument"
             opcode += get_imm(line_num, tokens[1], 16, 0, labels, label_addresses)
-        #elif operation == ".space":
-        #    assert len(tokens) == 2, f"Error in line {line_num + 1}: .space takes one argument"
-        #    assert tokens[1].isnumeric(), f"Error in line {line_num + 1}: .space takes an integer argument"
-        #    n = int(tokens[1])
-        #    for _ in range(n):
-        #        opcode += "0000\n"
-        #        return opcode
+        elif operation == ".space":
+            # TODO: test this, might be buggy
+            assert len(tokens) == 2, f"Error in line {line_num + 1}: .space takes one argument"
+            assert tokens[1].isnumeric(), f"Error in line {line_num + 1}: .space takes an integer argument"
+            n = int(tokens[1])
+            opcode = ""
+            for _ in range(n):
+                opcode += "0000\n"
+                return opcode
         elif operation == "push":
             # dec sp, then store
             assert len(tokens) == 2, f"Error in line {line_num + 1}: push takes one argument"
@@ -425,12 +381,6 @@ def assemble(names, tracked_labels):
     label_addresses = []
     address = 0
 
-    # right now the assembler will only generate code that starts in kernel mode
-    # at some point I'll fix this
-    os = False
-    if "os = true" in data[0]:
-        os = True
-
     for line_num, line in enumerate(data):
         line = line.replace("\n", "")
         line = line.replace("\t", " ")
@@ -491,44 +441,12 @@ def assemble(names, tracked_labels):
     for label, address in zip(labels, label_addresses):
         if label in tracked_labels:
             print(f"{label}: {address} = {hex(address)}")
-    if os == True:
-        # generate table of addresses for exception handlers
-        defined_exceptions = {}
-        exc_rom = open("ROMs/exc_rom.bin",
-                       "wb")
-        exc_binary = []
-        for label, address in zip(labels, label_addresses):
-            if label in exception_dict:
-                defined_exceptions[int(exception_dict[label], 2)] = address
-                assert address <= 0xFFFF, f"Out of bounds exception handler: {label}"
-        for i in range(2 ** 7):
-            if i in defined_exceptions:
-                address = defined_exceptions[i]
-                exc_binary.append(address & 0xFF)
-                exc_binary.append((address & 0xFF00) >> 8)
-            else:
-                exc_binary.append(0)
-                exc_binary.append(0)
-        exc_rom.write(bytearray(exc_binary))
-        exc_rom.close()
 
 # names[0] is main
 # names[1:] are libraries to include       
-def assemble_to_binary(names, emu, tracked_labels = []):
+def assemble_to_binary(names, tracked_labels = []):
 
     bytes_list = []
-
-    # the simulation requires the os code, but not the emulator
-    if not emu:
-      assemble(["asm_libraries/os.s"], tracked_labels)
-      os_file = open("asm_libraries/os.out", 'r')
-      for line in os_file.readlines():
-          value = int(line, 16)
-          upper_byte = value & 0b1111_1111_0000_0000
-          upper_byte = upper_byte >> 8
-          lower_byte = value & 0b0000_0000_1111_1111
-          bytes_list.append(lower_byte)
-          bytes_list.append(upper_byte)
     
     # generate machine code file
     assemble(names, tracked_labels)
@@ -556,8 +474,4 @@ def assemble_to_binary(names, emu, tracked_labels = []):
 
 if __name__ == "__main__":
     args = sys.argv[1:]
-    emu = False # whether we're compiling for the emulator or the simulation
-    if "-emu" in args:
-        args.remove("-emu")
-        emu = True
-    assemble_to_binary(args, emu)
+    assemble_to_binary(args)
