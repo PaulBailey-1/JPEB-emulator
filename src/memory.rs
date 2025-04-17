@@ -1,5 +1,6 @@
 
-use std::sync::{Arc, RwLock};
+use std::{fs::File, sync::{Arc, RwLock}, vec};
+use std::io::Write;
 
 pub const FRAME_WIDTH: u32 = 640;
 pub const FRAME_HEIGHT: u32 = 480;
@@ -18,22 +19,6 @@ pub struct Memory {
   tile_map: Arc<RwLock<TileMap>>
 }
 
-// an 80x60 framebuffer of 8-bit tile values
-pub struct FrameBuffer {
-    pub width: u32, // number of tiles in the x direction
-    pub height: u32, // number of tiles in the y direction
-    tile_ptrs: Vec<u16>,
-}
-
-pub struct TileMap {
-    pub tiles: Vec<Tile>
-}
-
-#[derive(Clone)]
-pub struct Tile {
-    pub pixels: Vec<u16>, // an 8x8 tile of pixels
-}
-
 impl Memory {
 
     pub fn new(ram_init: Vec<u16>) -> Memory {
@@ -44,7 +29,7 @@ impl Memory {
         Memory {
             ram,
             frame_buffer: Arc::new(RwLock::new(FrameBuffer::new(FRAME_WIDTH, FRAME_HEIGHT))),
-            tile_map: Arc::new(RwLock::new(TileMap::new(TILES_NUM as usize)))
+            tile_map: Arc::new(RwLock::new(TileMap::load("tilemap.bmp")))
         }
     }
 
@@ -70,6 +55,13 @@ impl Memory {
         }
         self.ram[addr] = data;
     }
+}
+
+// an 80x60 framebuffer of 8-bit tile values
+pub struct FrameBuffer {
+    pub width: u32, // number of tiles in the x direction
+    pub height: u32, // number of tiles in the y direction
+    tile_ptrs: Vec<u16>,
 }
 
 impl FrameBuffer {
@@ -128,6 +120,15 @@ impl Tile {
     }
 }
 
+pub struct TileMap {
+    pub tiles: Vec<Tile>
+}
+
+#[derive(Clone)]
+pub struct Tile {
+    pub pixels: Vec<u16>, // an 8x8 tile of pixels
+}
+
 impl TileMap {
     pub fn new(size: usize) -> TileMap {
         let mut tiles = vec![Tile::black(); size];
@@ -135,6 +136,49 @@ impl TileMap {
         TileMap { 
             tiles
         }
+    }
+
+    pub fn load(filename: &str) -> TileMap {
+        let img = bmp::open(filename).expect(&format!("Failed to open tilemap {}", filename));
+        if (img.get_width() * img.get_height()) / (TILE_SIZE * TILE_SIZE) != TILES_NUM {
+            panic!("Loaded tilemap size mismatch");
+        }
+
+        let mut tiles: Vec<Tile> = vec![];
+        for y in 0..(img.get_height() / TILE_SIZE) {
+            for x in 0..(img.get_width() / TILE_SIZE) {
+                let mut pixels: Vec<u16> = vec![];
+                for py in 0..TILE_SIZE {
+                    for px in 0..TILE_SIZE {
+                        let p = img.get_pixel(x * TILE_SIZE + px, y * TILE_SIZE + py);
+                        let mut color: u16 = 0;
+                        color = color | ((p.r >> 4) as u16);
+                        color = color | (((p.g >> 4) as u16) << 4);
+                        color = color | (((p.b >> 4) as u16) << 8);
+                        pixels.push(color);
+                    }
+                }
+                tiles.push(Tile{pixels});
+            }
+        }
+        let map = TileMap{tiles};
+        map.save_bin_map();
+        return map;
+    }
+
+    pub fn save_bin_map(&self) {
+        let mut file = File::create("tilemap.bin").expect("Failed to open bin output");
+        let mut data: Vec<u8> = vec![];
+        for tile in &self.tiles {
+            for py in 0..TILE_SIZE {
+                for px in 0..TILE_SIZE {
+                    let p = tile.pixels[(py * TILE_SIZE + px) as usize];
+                    data.push((p & 0x00ff) as u8);
+                    data.push(((p & 0xff00) >> 8) as u8);
+                }
+            }
+        }
+        file.write_all(data.as_slice()).expect("Failed to write to bin");
     }
 
     pub fn get_tile_word(&self, addr: u32) -> u16 {

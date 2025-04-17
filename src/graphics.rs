@@ -71,8 +71,8 @@ impl Graphics {
                     for py in 0..TILE_SIZE {
                         let tile_pixel: u16 = tile.pixels[(px + py * TILE_SIZE) as usize];
                         let red = (tile_pixel & 0x000f) as u8 * 16;
-                        let green = (tile_pixel & 0x00f0 >> 4) as u8 * 16;
-                        let blue = (tile_pixel & 0x0f00 >> 8) as u8 * 16;
+                        let green = ((tile_pixel & 0x00f0) >> 4) as u8 * 16;
+                        let blue = ((tile_pixel & 0x0f00) >> 8) as u8 * 16;
                         let pixel = Rgba([red, green, blue, 255]);
                         self.buffer.put_pixel(x * TILE_SIZE + px, y * TILE_SIZE + py, pixel);
                     }
