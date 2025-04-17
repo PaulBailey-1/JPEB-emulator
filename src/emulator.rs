@@ -39,7 +39,11 @@ impl Emulator {
 
     let mut graphics: Option<Graphics> = None;
     if with_graphics {
-      graphics = Some(Graphics::new(self.memory.get_frame_buffer(), self.memory.get_tile_map()));
+      graphics = Some(Graphics::new(
+        self.memory.get_frame_buffer(), 
+        self.memory.get_tile_map(), 
+        self.memory.get_io_buffer()
+      ));
     }
 
     // Return value and termination signal
@@ -52,7 +56,6 @@ impl Emulator {
       let finished_clone = Arc::clone(&finished);
       move || {
         while !self.halted {
-          self.memory.write(0xe000 + self.pc as usize, 1); // test showing graphics output
           let instruction = self.memory.read(usize::from(self.pc));
           self.execute(instruction);
         }

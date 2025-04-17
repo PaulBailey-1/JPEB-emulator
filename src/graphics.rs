@@ -1,20 +1,23 @@
 use piston_window::*;
 use ::image::{ImageBuffer, Rgba};
-use std::sync::{Arc, Mutex, RwLock};
+use std::{collections::VecDeque, sync::{Arc, Mutex, RwLock}};
 
 use crate::memory::*;
+
 
 pub struct Graphics {
     window: PistonWindow,
     buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
     texture: G2dTexture,
     frame_buffer: Arc<RwLock<FrameBuffer>>,
-    tile_map: Arc<RwLock<TileMap>>
+    tile_map: Arc<RwLock<TileMap>>,
+    io_buffer: Arc<RwLock<VecDeque<u16>>>
 }
 
 impl Graphics {
 
-    pub fn new(frame_buffer: Arc<RwLock<FrameBuffer>>, tile_map: Arc<RwLock<TileMap>>) -> Graphics {
+    pub fn new(frame_buffer: Arc<RwLock<FrameBuffer>>, tile_map: Arc<RwLock<TileMap>>, 
+        io_buffer: Arc<RwLock<VecDeque<u16>>>) -> Graphics {
         let mut window: PistonWindow = WindowSettings::new("JPEB", [FRAME_WIDTH, FRAME_HEIGHT])
             .exit_on_esc(true)
             .build()
@@ -34,7 +37,8 @@ impl Graphics {
             buffer,
             texture,
             frame_buffer,
-            tile_map
+            tile_map,
+            io_buffer
         }
     }
 
@@ -53,6 +57,21 @@ impl Graphics {
                         clear([0.0; 4], graphics); // black background
                         image(&self.texture, context.transform, graphics);
                     });
+                }
+                Event::Input(Input::Button(ButtonArgs { 
+                    button: Button::Keyboard(key), 
+                    state, .. }), _) => {
+                    match state {
+                        ButtonState::Press => {
+                            self.io_buffer.write().unwrap().push_back(key as u16);
+                            // println!("Key pressed: {:?}", key);
+                            // Handle key press here
+                        }
+                        ButtonState::Release => {
+                            // println!("Key released: {:?}", key);
+                            // Handle key release here
+                        }
+                    }
                 }
                 _ => {}
             }
