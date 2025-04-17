@@ -13,7 +13,7 @@ const TILE_MAP_START : usize = 0xc000;
 const TILE_MAP_SIZE : usize = 0x2000;
 const FRAME_BUFFER_START : usize = 0xe000;
 const FRAME_BUFFER_SIZE : usize = 0x1000;
-const IO_BUFFER_START : usize = 0xFFFF;
+const KEYBOARD_REG : usize = 0xF000;
 
 pub struct Memory {
   ram: Vec<u16>,   
@@ -32,7 +32,7 @@ impl Memory {
         Memory {
             ram,
             frame_buffer: Arc::new(RwLock::new(FrameBuffer::new(FRAME_WIDTH, FRAME_HEIGHT))),
-            tile_map: Arc::new(RwLock::new(TileMap::load("tilemap.bmp")))
+            tile_map: Arc::new(RwLock::new(TileMap::load("tilemap.bmp"))),
             io_buffer: Arc::new(RwLock::new(VecDeque::new()))
         }
     }
@@ -48,7 +48,7 @@ impl Memory {
         if addr >= FRAME_BUFFER_START && addr < FRAME_BUFFER_START + FRAME_BUFFER_SIZE {
             return self.frame_buffer.read().unwrap().get_tile_pair((addr - FRAME_BUFFER_START) as u32);
         }
-        if addr == IO_BUFFER_START {
+        if addr == KEYBOARD_REG {
             return self.io_buffer.write().unwrap().pop_front().unwrap_or(0);
         }
         return self.ram[addr];
