@@ -50,6 +50,7 @@ impl Graphics {
             hscroll_register,
         }
     }
+    
 
     pub fn start(&mut self, finished: Arc<Mutex<bool>>, stay_open: bool) {
         while let Some(event) = self.window.next() {
@@ -87,6 +88,7 @@ impl Graphics {
         }
     }
 
+
     fn update(&mut self) {
         // Updates buffer from emulated frame buffer and tile map
         let fb = self.frame_buffer.read().unwrap();
@@ -99,10 +101,10 @@ impl Graphics {
                     for py in 0..TILE_SIZE {
                         let tile_pixel: u16 = tile.pixels[(px + py * TILE_SIZE) as usize];
                         let red = (tile_pixel & 0x000f) as u8 * 16;
-                        let green = (tile_pixel & 0x00f0 >> 4) as u8 * 16;
-                        let blue = (tile_pixel & 0x0f00 >> 8) as u8 * 16;
+                        let green = ((tile_pixel & 0x00f0) >> 4) as u8 * 16;
+                        let blue = ((tile_pixel & 0x0f00) >> 8) as u8 * 16;
                         let pixel = Rgba([red, green, blue, 255]);
-
+                        
                         // what do we put in on the other side?
                         let scroll_x = *self.hscroll_register.read().unwrap() as i32;
                         let scroll_y = *self.vscroll_register.read().unwrap() as i32;
