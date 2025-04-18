@@ -1,25 +1,67 @@
 use std::collections::VecDeque;
 
-use std::{fs::File, sync::{Arc, RwLock}, vec};
+use std::fs::File;
 use std::io::Write;
+use std::sync::{Arc, RwLock};
 
-pub const FRAME_WIDTH: u32 = 640;
-pub const FRAME_HEIGHT: u32 = 480;
+pub const STACK_START : usize = 0xB000;
+
+pub const FRAME_WIDTH: u32 = 1024;
+pub const FRAME_HEIGHT: u32 = 512;
 pub const TILE_SIZE: u32 = 8;
 const TILES_NUM: u32 = 128;
 const TILE_DATA_SIZE: u32 = TILE_SIZE * TILE_SIZE;
+pub const SPRITE_SIZE: u32 = 32;
+const SPRITES_NUM: u32 = 8;
+const SPRITE_DATA_SIZE: u32 = SPRITE_SIZE * SPRITE_SIZE;
 
-const TILE_MAP_START : usize = 0xc000;
+const TILE_MAP_START : usize = 0xC000;
 const TILE_MAP_SIZE : usize = 0x2000;
-const FRAME_BUFFER_START : usize = 0xe000;
+const FRAME_BUFFER_START : usize = 0xE000;
 const FRAME_BUFFER_SIZE : usize = 0x1000;
-const KEYBOARD_REG : usize = 0xF000;
+const IO_BUFFER_START : usize = 0xFFFF;
+const V_SCROLL_START : usize = 0xFFFD;
+const H_SCROLL_START : usize = 0xFFFE;
+const SPRITE_MAP_START : usize = 0xB000;
+const SPRITE_MAP_SIZE : usize = 0x1000;
+const SPRITE_REGISTERS_START : usize = 0xFFE0;  // every consecutive pair of words correspond to 
+const SPIRTE_REGISTERS_SIZE : usize = 0x10;     // the y and x coordinates, respectively of a sprite
 
 pub struct Memory {
   ram: Vec<u16>,   
   frame_buffer: Arc<RwLock<FrameBuffer>>,
   tile_map: Arc<RwLock<TileMap>>, 
-  io_buffer: Arc<RwLock<VecDeque<u16>>>
+  io_buffer: Arc<RwLock<VecDeque<u16>>>,
+  vscroll_register: Arc<RwLock<u16>>,
+  hscroll_register: Arc<RwLock<u16>>,
+  sprite_map: Arc<RwLock<SpriteMap>>,
+}
+
+// an 80x60 framebuffer of 8-bit tile values
+pub struct FrameBuffer {
+    pub width: u32, // number of tiles in the x direction
+    pub height: u32, // number of tiles in the y direction
+    tile_ptrs: Vec<u16>,
+}
+
+pub struct TileMap {
+    pub tiles: Vec<Tile>
+}
+
+#[derive(Clone)]
+pub struct Tile {
+    pub pixels: Vec<u16>, // an 8x8 tile of pixels
+}
+
+pub struct SpriteMap {
+    pub sprites: Vec<Sprite>,
+}
+
+#[derive(Clone)]
+pub struct Sprite {
+    pub x: u16,
+    pub y: u16,
+    pub pixels: Vec<u16>, // a 32x32 tile of pixels
 }
 
 impl Memory {
@@ -33,13 +75,19 @@ impl Memory {
             ram,
             frame_buffer: Arc::new(RwLock::new(FrameBuffer::new(FRAME_WIDTH, FRAME_HEIGHT))),
             tile_map: Arc::new(RwLock::new(TileMap::load("tilemap.bmp"))),
-            io_buffer: Arc::new(RwLock::new(VecDeque::new()))
+            io_buffer: Arc::new(RwLock::new(VecDeque::new())),
+            vscroll_register: Arc::new(RwLock::new(0)),
+            hscroll_register: Arc::new(RwLock::new(0)),
+            sprite_map: Arc::new(RwLock::new(SpriteMap::load("spritemap.bmp")))
         }
     }
 
     pub fn get_frame_buffer(&self) -> Arc<RwLock<FrameBuffer>> { return Arc::clone(&self.frame_buffer)}
     pub fn get_tile_map(&self) -> Arc<RwLock<TileMap>> { return Arc::clone(&self.tile_map)}
     pub fn get_io_buffer(&self) -> Arc<RwLock<VecDeque<u16>>> { return Arc::clone(&self.io_buffer) }
+    pub fn get_vscroll_register(&self) -> Arc<RwLock<u16>> { return Arc::clone(&self.vscroll_register) }
+    pub fn get_hscroll_register(&self) -> Arc<RwLock<u16>> { return Arc::clone(&self.hscroll_register) }
+    pub fn get_sprite_map(&self) -> Arc<RwLock<SpriteMap>> { return Arc::clone(&self.sprite_map) }
 
     pub fn read(&mut self, addr: usize) -> u16 {
         if addr >= TILE_MAP_START && addr < TILE_MAP_START + TILE_MAP_SIZE {
@@ -48,8 +96,20 @@ impl Memory {
         if addr >= FRAME_BUFFER_START && addr < FRAME_BUFFER_START + FRAME_BUFFER_SIZE {
             return self.frame_buffer.read().unwrap().get_tile_pair((addr - FRAME_BUFFER_START) as u32);
         }
-        if addr == KEYBOARD_REG {
+        if addr == IO_BUFFER_START {
             return self.io_buffer.write().unwrap().pop_front().unwrap_or(0);
+        }
+        if addr >= SPRITE_MAP_START && addr < SPRITE_MAP_START + SPRITE_MAP_SIZE {
+            return self.sprite_map.read().unwrap().get_sprite_word((addr - SPRITE_MAP_START) as u32);
+        }
+        if addr >= SPRITE_REGISTERS_START && addr < SPRITE_REGISTERS_START + SPIRTE_REGISTERS_SIZE {
+            return self.sprite_map.read().unwrap().get_sprite_reg((addr - SPRITE_REGISTERS_START) as u32);
+        }
+        if addr == V_SCROLL_START {
+            return *self.vscroll_register.read().unwrap();
+        }
+        if addr == H_SCROLL_START {
+            return *self.hscroll_register.read().unwrap();
         }
         return self.ram[addr];
     }
@@ -59,18 +119,25 @@ impl Memory {
             self.tile_map.write().unwrap().set_tile_word((addr - TILE_MAP_START) as u32, data);
         }
         if addr >= FRAME_BUFFER_START && addr < FRAME_BUFFER_START + FRAME_BUFFER_SIZE {
-            print!("{:#x}\n", addr);
             self.frame_buffer.write().unwrap().set_tile_pair((addr - FRAME_BUFFER_START) as u32, data);
+        }
+        if addr == IO_BUFFER_START {
+            panic!("attempting to write to read input port (address {})", IO_BUFFER_START);
+        }
+        if addr == V_SCROLL_START {
+            *self.vscroll_register.write().unwrap() = data;
+        }
+        if addr == H_SCROLL_START {
+            *self.hscroll_register.write().unwrap() = data;
+        }
+        if addr >= SPRITE_MAP_START && addr < SPRITE_MAP_START + SPRITE_MAP_SIZE {
+            self.sprite_map.write().unwrap().set_sprite_word((addr - SPRITE_MAP_START) as u32, data);
+        }
+        if addr >= SPRITE_REGISTERS_START && addr < SPRITE_REGISTERS_START + SPIRTE_REGISTERS_SIZE {
+            self.sprite_map.write().unwrap().set_sprite_reg((addr - SPRITE_REGISTERS_START) as u32, data);
         }
         self.ram[addr] = data;
     }
-}
-
-// an 80x60 framebuffer of 8-bit tile values
-pub struct FrameBuffer {
-    pub width: u32, // number of tiles in the x direction
-    pub height: u32, // number of tiles in the y direction
-    tile_ptrs: Vec<u16>,
 }
 
 impl FrameBuffer {
@@ -129,19 +196,9 @@ impl Tile {
     }
 }
 
-pub struct TileMap {
-    pub tiles: Vec<Tile>
-}
-
-#[derive(Clone)]
-pub struct Tile {
-    pub pixels: Vec<u16>, // an 8x8 tile of pixels
-}
-
 impl TileMap {
     pub fn new(size: usize) -> TileMap {
-        let mut tiles = vec![Tile::black(); size];
-        tiles[0] = Tile::white();
+        let tiles = vec![Tile::black(); size];
         TileMap { 
             tiles
         }
@@ -196,5 +253,104 @@ impl TileMap {
 
     pub fn set_tile_word(&mut self, addr: u32, data: u16) {
         self.tiles[(addr / TILE_DATA_SIZE) as usize].pixels[(addr % TILE_DATA_SIZE) as usize] = data;
+    }
+}
+
+impl Sprite {
+    pub fn invisible() -> Sprite {
+        Sprite {
+            x: 0xFFFF,
+            y: 0xFFFF,
+            pixels: vec![0xFFFF; SPRITE_DATA_SIZE as usize],
+        }
+    }
+}
+
+impl SpriteMap {
+    pub fn new(size: usize) -> SpriteMap {
+        let sprites = vec![Sprite::invisible(); size];
+        SpriteMap { 
+            sprites
+        }
+    }
+
+    pub fn load(filename: &str) -> SpriteMap {
+        let img = bmp::open(filename).expect(&format!("Failed to open spritemap {}", filename));
+        if (img.get_width() * img.get_height()) / (SPRITE_SIZE * SPRITE_SIZE) < SPRITES_NUM {
+            panic!("Loaded spritemap size mismatch");
+        }
+
+        let mut sprites: Vec<Sprite> = vec![];
+        for y in 0..(img.get_height() / SPRITE_SIZE) {
+            for x in 0..(img.get_width() / SPRITE_SIZE) {
+                let mut pixels: Vec<u16> = vec![];
+                for py in 0..SPRITE_SIZE {
+                    for px in 0..SPRITE_SIZE {
+                        let p = img.get_pixel(x * SPRITE_SIZE + px, y * SPRITE_SIZE + py);
+                        if p == bmp::Pixel::new(0xff, 0x00, 0xff) {
+                            // transparent pixel
+                            pixels.push(0xFFFF);
+                            continue;
+                        }
+
+                        let mut color: u16 = 0;
+                        color = color | ((p.r >> 4) as u16);
+                        color = color | (((p.g >> 4) as u16) << 4);
+                        color = color | (((p.b >> 4) as u16) << 8);
+                        pixels.push(color);
+                    }
+                }
+                sprites.push(Sprite{x: 0xFFFF, y: 0xFFFF, pixels});
+            }
+        }
+        // only store the first 8 sprites
+        sprites.truncate(SPRITES_NUM as usize);
+        let map = SpriteMap{sprites};
+        map.save_bin_map();
+        return map;
+    }
+
+    pub fn save_bin_map(&self) {
+        let mut file = File::create("spritemap.bin").expect("Failed to open sprite output");
+        let mut data: Vec<u8> = vec![];
+        for sprite in &self.sprites {
+            for py in 0..SPRITE_SIZE {
+                for px in 0..SPRITE_SIZE {
+                    let p = sprite.pixels[(py * SPRITE_SIZE + px) as usize];
+                    data.push((p & 0x00ff) as u8);
+                    data.push(((p & 0xff00) >> 8) as u8);
+                }
+            }
+        }
+        file.write_all(data.as_slice()).expect("Failed to write to bin");
+    }
+
+    // this will get a single corrsponding pixel
+    pub fn get_sprite_word(&self, addr: u32) -> u16 {
+        return self.sprites[(addr / SPRITE_DATA_SIZE) as usize].pixels[(addr % SPRITE_DATA_SIZE) as usize];
+    }
+
+    pub fn set_sprite_word(&mut self, addr: u32, data: u16) {
+        self.sprites[(addr / SPRITE_DATA_SIZE) as usize].pixels[(addr % SPRITE_DATA_SIZE) as usize] = data;
+    }
+
+    // returns the either y or x coordinate of the sprite corresponding to the addr/2, addr%2
+    pub fn get_sprite_reg(&self, addr: u32) -> u16 {
+        let sprite = &self.sprites[(addr / 2) as usize];
+        if addr % 2 == 0 {
+            return sprite.y;
+        } else {
+            return sprite.x;
+        }
+    }
+
+    // sets the either y or x coordinate of the sprite corresponding to the addr/2, addr%2
+    pub fn set_sprite_reg(&mut self, addr: u32, data: u16) {
+        let sprite = &mut self.sprites[(addr / 2) as usize];
+        if addr % 2 == 0 {
+            sprite.y = data;
+        } else {
+            sprite.x = data;
+        }
     }
 }

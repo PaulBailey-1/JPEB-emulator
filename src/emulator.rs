@@ -4,6 +4,8 @@ use std::thread;
 use crate::memory::Memory;
 use crate::graphics::Graphics;
 
+use crate::memory::STACK_START;
+
 pub struct Emulator {
   regfile : [u16; 8],
   memory: Memory,
@@ -42,8 +44,16 @@ impl Emulator {
       graphics = Some(Graphics::new(
         self.memory.get_frame_buffer(), 
         self.memory.get_tile_map(), 
-        self.memory.get_io_buffer()
+        self.memory.get_io_buffer(),
+        self.memory.get_vscroll_register(),
+        self.memory.get_hscroll_register(),
+        self.memory.get_sprite_map(),
       ));
+
+      // Graphics will occupy the upper address space so we need to
+      // start the stack and base pointers at a different address
+      self.regfile[1] = STACK_START as u16;  // stack pointer
+      self.regfile[2] = STACK_START as u16;  // base pointer
     }
 
     // Return value and termination signal
