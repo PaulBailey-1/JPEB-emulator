@@ -6,8 +6,8 @@ use std::sync::{Arc, RwLock};
 
 pub const STACK_START : usize = 0xc000;
 
-pub const FRAME_WIDTH: u32 = 640;
-pub const FRAME_HEIGHT: u32 = 480;
+pub const FRAME_WIDTH: u32 = 1024;
+pub const FRAME_HEIGHT: u32 = 512;
 pub const TILE_SIZE: u32 = 8;
 const TILES_NUM: u32 = 128;
 const TILE_DATA_SIZE: u32 = TILE_SIZE * TILE_SIZE;
@@ -17,8 +17,8 @@ const TILE_MAP_SIZE : usize = 0x2000;
 const FRAME_BUFFER_START : usize = 0xe000;
 const FRAME_BUFFER_SIZE : usize = 0x1000;
 const IO_BUFFER_START : usize = 0xFFFF;
-const V_SCROLL_START : usize = 0xFFFE;
-const H_SCROLL_START : usize = 0xFFFC;
+const V_SCROLL_START : usize = 0xFFFD;
+const H_SCROLL_START : usize = 0xFFFE;
 
 pub struct Memory {
   ram: Vec<u16>,   

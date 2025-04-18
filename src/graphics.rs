@@ -4,6 +4,8 @@ use std::{collections::VecDeque, sync::{Arc, Mutex, RwLock}};
 
 use crate::memory::*;
 
+const SCREEN_WIDTH: u32 = 640;
+const SCREEN_HEIGHT: u32 = 480;
 
 pub struct Graphics {
     window: PistonWindow,
@@ -25,7 +27,7 @@ impl Graphics {
         vscroll_register: Arc<RwLock<u16>>,
         hscroll_register: Arc<RwLock<u16>>,
     ) -> Graphics {
-        let mut window: PistonWindow = WindowSettings::new("JPEB", [FRAME_WIDTH, FRAME_HEIGHT])
+        let mut window: PistonWindow = WindowSettings::new("JPEB", [SCREEN_WIDTH, SCREEN_HEIGHT])
             .exit_on_esc(true)
             .build()
             .unwrap();
@@ -74,7 +76,7 @@ impl Graphics {
                     match state {
                         ButtonState::Press => {
                             self.io_buffer.write().unwrap().push_back(key as u16);
-                            // println!("Key pressed: {:?}", key);
+                            // println!("Key pressed: {:?}", key as u16);
                             // Handle key press here
                         }
                         ButtonState::Release => {
@@ -105,17 +107,15 @@ impl Graphics {
                         let blue = ((tile_pixel & 0x0f00) >> 8) as u8 * 16;
                         let pixel = Rgba([red, green, blue, 255]);
                         
-                        // what do we put in on the other side?
                         let scroll_x = *self.hscroll_register.read().unwrap() as i32;
                         let scroll_y = *self.vscroll_register.read().unwrap() as i32;
-                        let final_x: i32 = (x * TILE_SIZE) as i32 + px as i32 - scroll_x;
-                        let final_y: i32 = (y * TILE_SIZE) as i32 + py as i32 + scroll_y;
+                        let raw_x: i32 = (x * TILE_SIZE) as i32 + px as i32 + scroll_x;
+                        let raw_y: i32 = (y * TILE_SIZE) as i32 + py as i32 + scroll_y;
+                        let final_x: u32 = (raw_x + FRAME_WIDTH as i32) as u32 % FRAME_WIDTH;
+                        let final_y: u32 = (raw_y + FRAME_HEIGHT as i32) as u32 % FRAME_HEIGHT;
 
-                        if final_x >= 0 && final_x < FRAME_WIDTH as i32 &&
-                            final_y >= 0 && final_y < FRAME_HEIGHT as i32 {
-                                // print the pixel rgba
-                                self.buffer.put_pixel(final_x as u32, final_y as u32, pixel);
-                            }
+                        // print the pixel rgba
+                        self.buffer.put_pixel(final_x, final_y, pixel);
                     }
                 }
             }
