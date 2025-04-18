@@ -1,20 +1,30 @@
 use piston_window::*;
 use ::image::{ImageBuffer, Rgba};
-use std::sync::{Arc, Mutex, RwLock};
+use std::{collections::VecDeque, sync::{Arc, Mutex, RwLock}};
 
 use crate::memory::*;
+
 
 pub struct Graphics {
     window: PistonWindow,
     buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
     texture: G2dTexture,
     frame_buffer: Arc<RwLock<FrameBuffer>>,
-    tile_map: Arc<RwLock<TileMap>>
+    tile_map: Arc<RwLock<TileMap>>,
+    io_buffer: Arc<RwLock<VecDeque<u16>>>,
+    vscroll_register: Arc<RwLock<u16>>,
+    hscroll_register: Arc<RwLock<u16>>,
 }
 
 impl Graphics {
 
-    pub fn new(frame_buffer: Arc<RwLock<FrameBuffer>>, tile_map: Arc<RwLock<TileMap>>) -> Graphics {
+    pub fn new(
+        frame_buffer: Arc<RwLock<FrameBuffer>>, 
+        tile_map: Arc<RwLock<TileMap>>, 
+        io_buffer: Arc<RwLock<VecDeque<u16>>>, 
+        vscroll_register: Arc<RwLock<u16>>,
+        hscroll_register: Arc<RwLock<u16>>,
+    ) -> Graphics {
         let mut window: PistonWindow = WindowSettings::new("JPEB", [FRAME_WIDTH, FRAME_HEIGHT])
             .exit_on_esc(true)
             .build()
@@ -34,7 +44,10 @@ impl Graphics {
             buffer,
             texture,
             frame_buffer,
-            tile_map
+            tile_map,
+            io_buffer,
+            vscroll_register,
+            hscroll_register,
         }
     }
 
@@ -53,6 +66,21 @@ impl Graphics {
                         clear([0.0; 4], graphics); // black background
                         image(&self.texture, context.transform, graphics);
                     });
+                }
+                Event::Input(Input::Button(ButtonArgs { 
+                    button: Button::Keyboard(key), 
+                    state, .. }), _) => {
+                    match state {
+                        ButtonState::Press => {
+                            self.io_buffer.write().unwrap().push_back(key as u16);
+                            // println!("Key pressed: {:?}", key);
+                            // Handle key press here
+                        }
+                        ButtonState::Release => {
+                            // println!("Key released: {:?}", key);
+                            // Handle key release here
+                        }
+                    }
                 }
                 _ => {}
             }
@@ -74,7 +102,17 @@ impl Graphics {
                         let green = (tile_pixel & 0x00f0 >> 4) as u8 * 16;
                         let blue = (tile_pixel & 0x0f00 >> 8) as u8 * 16;
                         let pixel = Rgba([red, green, blue, 255]);
-                        self.buffer.put_pixel(x * TILE_SIZE + px, y * TILE_SIZE + py, pixel);
+
+                        // what do we put in on the other side?
+                        let scroll_x = *self.hscroll_register.read().unwrap() as i32;
+                        let scroll_y = *self.vscroll_register.read().unwrap() as i32;
+                        let final_x: i32 = (x * TILE_SIZE) as i32 + px as i32 - scroll_x;
+                        let final_y: i32 = (y * TILE_SIZE) as i32 + py as i32 + scroll_y;
+
+                        if final_x >= 0 && final_x < FRAME_WIDTH as i32 &&
+                            final_y >= 0 && final_y < FRAME_HEIGHT as i32 {
+                                self.buffer.put_pixel(final_x as u32, final_y as u32, pixel);
+                            }
                     }
                 }
             }

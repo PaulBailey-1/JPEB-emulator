@@ -4,6 +4,8 @@ use std::thread;
 use crate::memory::Memory;
 use crate::graphics::Graphics;
 
+use crate::memory::STACK_START;
+
 pub struct Emulator {
   regfile : [u16; 8],
   memory: Memory,
@@ -39,7 +41,18 @@ impl Emulator {
 
     let mut graphics: Option<Graphics> = None;
     if with_graphics {
-      graphics = Some(Graphics::new(self.memory.get_frame_buffer(), self.memory.get_tile_map()));
+      graphics = Some(Graphics::new(
+        self.memory.get_frame_buffer(), 
+        self.memory.get_tile_map(), 
+        self.memory.get_io_buffer(),
+        self.memory.get_vscroll_register(),
+        self.memory.get_hscroll_register(),
+      ));
+
+      // Graphics will occupy the upper address space so we need to
+      // start the stack and base pointers at a different address
+      self.regfile[1] = STACK_START as u16;  // stack pointer
+      self.regfile[2] = STACK_START as u16;  // base pointer
     }
 
     // Return value and termination signal
@@ -52,7 +65,6 @@ impl Emulator {
       let finished_clone = Arc::clone(&finished);
       move || {
         while !self.halted {
-          self.memory.write(0xe000 + self.pc as usize, 1); // test showing graphics output
           let instruction = self.memory.read(usize::from(self.pc));
           self.execute(instruction);
         }

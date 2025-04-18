@@ -1,5 +1,8 @@
+use std::collections::VecDeque;
 
 use std::sync::{Arc, RwLock};
+
+pub const STACK_START : usize = 0xc000;
 
 pub const FRAME_WIDTH: u32 = 640;
 pub const FRAME_HEIGHT: u32 = 480;
@@ -7,15 +10,21 @@ pub const TILE_SIZE: u32 = 8;
 const TILES_NUM: u32 = 128;
 const TILE_DATA_SIZE: u32 = TILE_SIZE * TILE_SIZE;
 
-const TILE_MAP_START : usize = 0xc000;
+const TILE_MAP_START : usize = 0xC000;
 const TILE_MAP_SIZE : usize = 0x2000;
 const FRAME_BUFFER_START : usize = 0xe000;
 const FRAME_BUFFER_SIZE : usize = 0x1000;
+const IO_BUFFER_START : usize = 0xFFFF;
+const V_SCROLL_START : usize = 0xFFFE;
+const H_SCROLL_START : usize = 0xFFFC;
 
 pub struct Memory {
   ram: Vec<u16>,   
   frame_buffer: Arc<RwLock<FrameBuffer>>,
-  tile_map: Arc<RwLock<TileMap>>
+  tile_map: Arc<RwLock<TileMap>>, 
+  io_buffer: Arc<RwLock<VecDeque<u16>>>,
+  vscroll_register: Arc<RwLock<u16>>,
+  hscroll_register: Arc<RwLock<u16>>,
 }
 
 // an 80x60 framebuffer of 8-bit tile values
@@ -44,12 +53,18 @@ impl Memory {
         Memory {
             ram,
             frame_buffer: Arc::new(RwLock::new(FrameBuffer::new(FRAME_WIDTH, FRAME_HEIGHT))),
-            tile_map: Arc::new(RwLock::new(TileMap::new(TILES_NUM as usize)))
+            tile_map: Arc::new(RwLock::new(TileMap::new(TILES_NUM as usize))),
+            io_buffer: Arc::new(RwLock::new(VecDeque::new())),
+            vscroll_register: Arc::new(RwLock::new(0)),
+            hscroll_register: Arc::new(RwLock::new(0)),
         }
     }
 
-    pub fn get_frame_buffer(&self) -> Arc<RwLock<FrameBuffer>> { return Arc::clone(&self.frame_buffer) }
-    pub fn get_tile_map(&self) -> Arc<RwLock<TileMap>> { return Arc::clone(&self.tile_map) }
+    pub fn get_frame_buffer(&self) -> Arc<RwLock<FrameBuffer>> { return Arc::clone(&self.frame_buffer)}
+    pub fn get_tile_map(&self) -> Arc<RwLock<TileMap>> { return Arc::clone(&self.tile_map)}
+    pub fn get_io_buffer(&self) -> Arc<RwLock<VecDeque<u16>>> { return Arc::clone(&self.io_buffer) }
+    pub fn get_vscroll_register(&self) -> Arc<RwLock<u16>> { return Arc::clone(&self.vscroll_register) }
+    pub fn get_hscroll_register(&self) -> Arc<RwLock<u16>> { return Arc::clone(&self.hscroll_register) }
 
     pub fn read(&mut self, addr: usize) -> u16 {
         if addr >= TILE_MAP_START && addr < TILE_MAP_START + TILE_MAP_SIZE {
@@ -57,6 +72,9 @@ impl Memory {
         }
         if addr >= FRAME_BUFFER_START && addr < FRAME_BUFFER_START + FRAME_BUFFER_SIZE {
             return self.frame_buffer.read().unwrap().get_tile_pair((addr - FRAME_BUFFER_START) as u32);
+        }
+        if addr == IO_BUFFER_START {
+            return self.io_buffer.write().unwrap().pop_front().unwrap_or(0);
         }
         return self.ram[addr];
     }
@@ -68,12 +86,20 @@ impl Memory {
         if addr >= FRAME_BUFFER_START && addr < FRAME_BUFFER_START + FRAME_BUFFER_SIZE {
             self.frame_buffer.write().unwrap().set_tile_pair((addr - FRAME_BUFFER_START) as u32, data);
         }
+        if addr == IO_BUFFER_START {
+            panic!("attempting to write to read input port (address {})", IO_BUFFER_START);
+        }
+        if addr == V_SCROLL_START {
+            *self.vscroll_register.write().unwrap() = data;
+        }
+        if addr == H_SCROLL_START {
+            *self.hscroll_register.write().unwrap() = data;
+        }
         self.ram[addr] = data;
     }
 }
 
 impl FrameBuffer {
-    // width and height are in pixels
     pub fn new(frame_width: u32, frame_height: u32) -> Self {
         let width = frame_width / TILE_SIZE;
         let height = frame_height / TILE_SIZE;
@@ -89,7 +115,7 @@ impl FrameBuffer {
         if i < self.tile_ptrs.len() as u32 {
             self.tile_ptrs[i as usize] = tile_pair_value;
         } else {
-            panic!("Tile coordinates out of bounds");
+            panic!("Tile coordinates out of bounds: {}", i);
         }
     }
 
