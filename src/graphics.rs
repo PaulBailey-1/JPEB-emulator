@@ -33,6 +33,7 @@ impl Graphics {
         window.set_ups(60);
 
         let buffer: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::new(FRAME_WIDTH, FRAME_HEIGHT);
+        let buffer: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::new(FRAME_WIDTH, FRAME_HEIGHT);
         let texture = Texture::from_image(
             &mut window.create_texture_context(),
             &buffer,

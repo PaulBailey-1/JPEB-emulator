@@ -1,0 +1,30 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "cppdbg",
+            "request": "launch",
+            "name": "cargo run -p JPEB-emulator",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/target/debug/JPEB-emulator",
+            "environment": [
+                {
+                    "name": "RUST_BACKTRACE",
+                    "value": "short"
+                },
+                {
+                    "name": "RUSTC_TOOLCHAIN",
+                    "value": "/home/paul/.rustup/toolchains/stable-x86_64-unknown-linux-gnu"
+                }
+            ],
+            "args": ["./src/emu_tests/bin/add_test.bin"],
+            "sourceFileMap": {},
+            "osx": {
+                "MIMode": "lldb"
+            }
+        }
+    ]
+}

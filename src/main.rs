@@ -4,6 +4,7 @@ use std::process;
 pub mod graphics;
 pub mod emulator;
 pub mod memory;
+pub mod graphics;
 pub mod tests;
 
 use emulator::Emulator;
