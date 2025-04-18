@@ -112,8 +112,6 @@ impl Graphics {
                         if final_x >= 0 && final_x < FRAME_WIDTH as i32 &&
                             final_y >= 0 && final_y < FRAME_HEIGHT as i32 {
                                 // print the pixel rgba
-                                println!("{} {} {} {}", pixel[0] as u32, pixel[1] as u32, pixel[2] as u32, pixel[3] as u32);
-                                println!("({},{}) < ({},{})", final_x, final_y, FRAME_WIDTH, FRAME_HEIGHT);
                                 self.buffer.put_pixel(final_x as u32, final_y as u32, pixel);
                             }
                     }
