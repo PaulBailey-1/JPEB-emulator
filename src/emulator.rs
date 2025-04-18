@@ -9,10 +9,8 @@ use crate::memory::STACK_START;
 pub struct Emulator {
   regfile : [u16; 8],
   memory: Memory,
-  memory: Memory,
   pc : u16,
   flags : [bool; 4], // flags are: carry | zero | sign | overflow
-  halted : bool,
   halted : bool,
 }
 
@@ -33,10 +31,8 @@ impl Emulator {
     Emulator {
       regfile: [0, 0, 0, 0, 0, 0, 0, 0],
       memory: Memory::new(instructions),
-      memory: Memory::new(instructions),
       pc: 0,
       flags: [false, false, false, false],
-      halted: false,
       halted: false,
     }
   }
