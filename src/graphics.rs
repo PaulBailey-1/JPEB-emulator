@@ -16,6 +16,7 @@ pub struct Graphics {
     io_buffer: Arc<RwLock<VecDeque<u16>>>,
     vscroll_register: Arc<RwLock<u16>>,
     hscroll_register: Arc<RwLock<u16>>,
+    sprite_map: Arc<RwLock<SpriteMap>>,
 }
 
 impl Graphics {
@@ -26,6 +27,7 @@ impl Graphics {
         io_buffer: Arc<RwLock<VecDeque<u16>>>, 
         vscroll_register: Arc<RwLock<u16>>,
         hscroll_register: Arc<RwLock<u16>>,
+        sprite_map: Arc<RwLock<SpriteMap>>,
     ) -> Graphics {
         let mut window: PistonWindow = WindowSettings::new("JPEB", [SCREEN_WIDTH, SCREEN_HEIGHT])
             .exit_on_esc(true)
@@ -50,6 +52,7 @@ impl Graphics {
             io_buffer,
             vscroll_register,
             hscroll_register,
+            sprite_map,
         }
     }
     
@@ -93,6 +96,7 @@ impl Graphics {
 
     fn update(&mut self) {
         // Updates buffer from emulated frame buffer and tile map
+        // draw the tiles of the frame buffer
         let fb = self.frame_buffer.read().unwrap();
         let tile_map = self.tile_map.read().unwrap();
         for x in 0..fb.width {
@@ -120,6 +124,33 @@ impl Graphics {
                 }
             }
         }
+
+        // draw the sprites of the sprite map
+        let sprite_map = self.sprite_map.read().unwrap();
+        for sprite in &sprite_map.sprites {
+            for px in 0..SPRITE_SIZE {
+                for py in 0..SPRITE_SIZE {
+                    let tile_pixel: u16 = sprite.pixels[(px + py * SPRITE_SIZE) as usize];
+                    let red = (tile_pixel & 0x000f) as u8 * 16;
+                    let green = ((tile_pixel & 0x00f0) >> 4) as u8 * 16;
+                    let blue = ((tile_pixel & 0x0f00) >> 8) as u8 * 16;
+                    let transparent = (tile_pixel & 0xf000) == 0xf000;
+                    if transparent {
+                        continue;
+                    }
+
+                    let pixel = Rgba([red, green, blue, 255]);
+                    let final_x: u32 = sprite.x as u32 + px;
+                    let final_y: u32 = sprite.y as u32 + py;
+
+                    // print the pixel rgba
+                    if final_x < FRAME_WIDTH && final_y < FRAME_HEIGHT {
+                        self.buffer.put_pixel(final_x, final_y, pixel);
+                    }
+                }
+            }
+        }
+
         // Updates texture from buffer
         self.texture = Texture::from_image(
             &mut self.window.create_texture_context(),
