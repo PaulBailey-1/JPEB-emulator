@@ -33,7 +33,6 @@ impl Graphics {
         window.set_ups(60);
 
         let buffer: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::new(FRAME_WIDTH, FRAME_HEIGHT);
-        let buffer: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::new(FRAME_WIDTH, FRAME_HEIGHT);
         let texture = Texture::from_image(
             &mut window.create_texture_context(),
             &buffer,
@@ -112,6 +111,9 @@ impl Graphics {
 
                         if final_x >= 0 && final_x < FRAME_WIDTH as i32 &&
                             final_y >= 0 && final_y < FRAME_HEIGHT as i32 {
+                                // print the pixel rgba
+                                println!("{} {} {} {}", pixel[0] as u32, pixel[1] as u32, pixel[2] as u32, pixel[3] as u32);
+                                println!("({},{}) < ({},{})", final_x, final_y, FRAME_WIDTH, FRAME_HEIGHT);
                                 self.buffer.put_pixel(final_x as u32, final_y as u32, pixel);
                             }
                     }
