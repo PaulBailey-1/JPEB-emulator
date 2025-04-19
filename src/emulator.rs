@@ -322,6 +322,7 @@ impl Emulator {
       13 => self.flags[0] || self.flags[1], // bae
       14 => !self.flags[0] && !self.flags[1], // bb
       15 => !self.flags[0] || self.flags[1], // bbe
+      16 => !self.flags[3], // bno
       _ => false
     };
 
