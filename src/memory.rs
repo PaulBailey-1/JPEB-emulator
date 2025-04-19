@@ -238,7 +238,7 @@ impl TileMap {
             }
         }
         let map = TileMap{tiles};
-        map.save_bin_map();
+        map.save_hex_map().expect("Failed to save hex tile map");
         return map;
     }
 
@@ -255,6 +255,21 @@ impl TileMap {
             }
         }
         file.write_all(data.as_slice()).expect("Failed to write to bin");
+    }
+
+    pub fn save_hex_map(&self) -> Result<(), std::io::Error> {
+        let mut file = File::create("tilemap.hex")?;
+        file.write(b"@0\n")?;
+        for tile in &self.tiles {
+            for py in 0..TILE_SIZE {
+                for px in 0..TILE_SIZE {
+                    let p = tile.pixels[(py * TILE_SIZE + px) as usize];
+                    write!(file, "{:04X} ", p)?;
+                }
+            }
+            file.write(b"\n")?;
+        }
+        Ok(())
     }
 
     pub fn get_tile_word(&self, addr: u32) -> u16 {
@@ -316,7 +331,7 @@ impl SpriteMap {
         // only store the first 8 sprites
         sprites.truncate(SPRITES_NUM as usize);
         let map = SpriteMap{sprites};
-        map.save_bin_map();
+        map.save_hex_map().expect("Failed to save hex sprite map");
         return map;
     }
 
@@ -333,6 +348,21 @@ impl SpriteMap {
             }
         }
         file.write_all(data.as_slice()).expect("Failed to write to bin");
+    }
+
+    pub fn save_hex_map(&self) -> Result<(), std::io::Error> {
+        let mut file = File::create("spritemap.hex")?;
+        file.write(b"@0\n")?;
+        for sprite in &self.sprites {
+            for py in 0..SPRITE_SIZE {
+                for px in 0..SPRITE_SIZE {
+                    let p = sprite.pixels[(py * SPRITE_SIZE + px) as usize];
+                    write!(file, "{:04X}\n", p)?;
+                }
+            }
+            file.write(b"\n")?;
+        }
+        Ok(())
     }
 
     // this will get a single corrsponding pixel
