@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::Write;
 use std::sync::{Arc, RwLock};
 
-pub const STACK_START : usize = 0xB000;
+pub const STACK_START : usize = 0xA000;
 
 pub const FRAME_WIDTH: u32 = 1024;
 pub const FRAME_HEIGHT: u32 = 512;
@@ -22,7 +22,8 @@ const FRAME_BUFFER_SIZE : usize = 0x1000;
 const IO_BUFFER_START : usize = 0xFFFF;
 const V_SCROLL_START : usize = 0xFFFD;
 const H_SCROLL_START : usize = 0xFFFE;
-const SPRITE_MAP_START : usize = 0xB000;
+const SCALE_REGISTER_START : usize = 0xFFFC; // each pixel is repeated 2^n times
+const SPRITE_MAP_START : usize = 0xA000;
 const SPRITE_MAP_SIZE : usize = 0x1000;
 const SPRITE_REGISTERS_START : usize = 0xFFE0;  // every consecutive pair of words correspond to 
 const SPIRTE_REGISTERS_SIZE : usize = 0x10;     // the y and x coordinates, respectively of a sprite
@@ -34,6 +35,7 @@ pub struct Memory {
   io_buffer: Arc<RwLock<VecDeque<u16>>>,
   vscroll_register: Arc<RwLock<u16>>,
   hscroll_register: Arc<RwLock<u16>>,
+  scale_register: Arc<RwLock<u16>>,
   sprite_map: Arc<RwLock<SpriteMap>>,
 }
 
@@ -78,6 +80,7 @@ impl Memory {
             io_buffer: Arc::new(RwLock::new(VecDeque::new())),
             vscroll_register: Arc::new(RwLock::new(0)),
             hscroll_register: Arc::new(RwLock::new(0)),
+            scale_register: Arc::new(RwLock::new(0)),
             sprite_map: Arc::new(RwLock::new(SpriteMap::load("spritemap.bmp")))
         }
     }
@@ -87,6 +90,7 @@ impl Memory {
     pub fn get_io_buffer(&self) -> Arc<RwLock<VecDeque<u16>>> { return Arc::clone(&self.io_buffer) }
     pub fn get_vscroll_register(&self) -> Arc<RwLock<u16>> { return Arc::clone(&self.vscroll_register) }
     pub fn get_hscroll_register(&self) -> Arc<RwLock<u16>> { return Arc::clone(&self.hscroll_register) }
+    pub fn get_scale_register(&self) -> Arc<RwLock<u16>> { return Arc::clone(&self.scale_register) }
     pub fn get_sprite_map(&self) -> Arc<RwLock<SpriteMap>> { return Arc::clone(&self.sprite_map) }
 
     pub fn read(&mut self, addr: usize) -> u16 {
@@ -111,6 +115,9 @@ impl Memory {
         if addr == H_SCROLL_START {
             return *self.hscroll_register.read().unwrap();
         }
+        if addr == SCALE_REGISTER_START {
+            return *self.scale_register.read().unwrap();
+        }
         return self.ram[addr];
     }
 
@@ -129,6 +136,9 @@ impl Memory {
         }
         if addr == H_SCROLL_START {
             *self.hscroll_register.write().unwrap() = data;
+        }
+        if addr == SCALE_REGISTER_START {
+            *self.scale_register.write().unwrap() = data;
         }
         if addr >= SPRITE_MAP_START && addr < SPRITE_MAP_START + SPRITE_MAP_SIZE {
             self.sprite_map.write().unwrap().set_sprite_word((addr - SPRITE_MAP_START) as u32, data);

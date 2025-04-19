@@ -48,6 +48,7 @@ impl Emulator {
         self.memory.get_vscroll_register(),
         self.memory.get_hscroll_register(),
         self.memory.get_sprite_map(),
+        self.memory.get_scale_register(),
       ));
 
       // Graphics will occupy the upper address space so we need to

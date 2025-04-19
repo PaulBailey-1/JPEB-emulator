@@ -16,6 +16,7 @@ pub struct Graphics {
     io_buffer: Arc<RwLock<VecDeque<u16>>>,
     vscroll_register: Arc<RwLock<u16>>,
     hscroll_register: Arc<RwLock<u16>>,
+    scale_register: Arc<RwLock<u16>>,
     sprite_map: Arc<RwLock<SpriteMap>>,
 }
 
@@ -28,6 +29,7 @@ impl Graphics {
         vscroll_register: Arc<RwLock<u16>>,
         hscroll_register: Arc<RwLock<u16>>,
         sprite_map: Arc<RwLock<SpriteMap>>,
+        scale_register: Arc<RwLock<u16>>,
     ) -> Graphics {
         let mut window: PistonWindow = WindowSettings::new("JPEB", [SCREEN_WIDTH, SCREEN_HEIGHT])
             .exit_on_esc(true)
@@ -53,6 +55,7 @@ impl Graphics {
             vscroll_register,
             hscroll_register,
             sprite_map,
+            scale_register,
         }
     }
     
@@ -99,6 +102,7 @@ impl Graphics {
         // draw the tiles of the frame buffer
         let fb = self.frame_buffer.read().unwrap();
         let tile_map = self.tile_map.read().unwrap();
+        let scale = 1 << (*self.scale_register.read().unwrap() as u32);
         for x in 0..fb.width {
             for y in 0..fb.height {
                 let tile_ptr = fb.get_tile(x, y);
@@ -111,6 +115,7 @@ impl Graphics {
                         let blue = ((tile_pixel & 0x0f00) >> 8) as u8 * 16;
                         let pixel = Rgba([red, green, blue, 255]);
                         
+                        // positions in the logical screen
                         let scroll_x = *self.hscroll_register.read().unwrap() as i32;
                         let scroll_y = *self.vscroll_register.read().unwrap() as i32;
                         let raw_x: i32 = (x * TILE_SIZE) as i32 + px as i32 + scroll_x;
@@ -118,8 +123,17 @@ impl Graphics {
                         let final_x: u32 = (raw_x + FRAME_WIDTH as i32) as u32 % FRAME_WIDTH;
                         let final_y: u32 = (raw_y + FRAME_HEIGHT as i32) as u32 % FRAME_HEIGHT;
 
-                        // print the pixel rgba
-                        self.buffer.put_pixel(final_x, final_y, pixel);
+                        // print the pixel rgba in the physical screen
+                        for i in 0..scale {
+                            for j in 0..scale {
+                                let screen_x: u32 = final_x * scale + i;
+                                let screen_y: u32 = final_y * scale + j;
+
+                                if screen_x < SCREEN_WIDTH && screen_y < SCREEN_HEIGHT {
+                                    self.buffer.put_pixel(screen_x, screen_y, pixel);
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -143,9 +157,16 @@ impl Graphics {
                     let final_x: u32 = sprite.x as u32 + px;
                     let final_y: u32 = sprite.y as u32 + py;
 
-                    // print the pixel rgba
-                    if final_x < FRAME_WIDTH && final_y < FRAME_HEIGHT {
-                        self.buffer.put_pixel(final_x, final_y, pixel);
+                    // print the pixel rgba in the physical screen
+                    for i in 0..scale {
+                        for j in 0..scale {
+                            let screen_x: u32 = final_x * scale + i;
+                            let screen_y: u32 = final_y * scale + j;
+
+                            if screen_x < SCREEN_WIDTH && screen_y < SCREEN_HEIGHT {
+                                self.buffer.put_pixel(screen_x, screen_y, pixel);
+                            }
+                        }
                     }
                 }
             }
