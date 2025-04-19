@@ -24,13 +24,13 @@ rA is destination, rB and rC are sources
 000aaabbb0110ccc - sub  rA, rB, rC  
 000aaabbb0111ccc - xor  rA, rB, rC  
 000aaabbb1000ccc - not  rA, rC  
-000aaabbb1001ccc - shl  rA, rB, rC  (logical shift left)    
-000aaabbb1010ccc - shr  rA, rB, rC  (logical shift right)  
-000aaabbb1011ccc - rotl rA, rB, rC  (rotate left)  
-000aaabbb1100ccc - rotr rA, rB, rC  (rotate right)  
-000aaabbb1101ccc - sshr rA, rB, rC  (arithmetic shift right)  
-000aaabbb1110ccc - shrc rA, rB, rC  (shift right with carry)  
-000aaabbb1111ccc - shlc rA, rB, rC  (shift left with carry)  
+000aaabbb1001ccc - shl  rA, rC      (logical shift left)    
+000aaabbb1010ccc - shr  rA, rC      (logical shift right)  
+000aaabbb1011ccc - rotl rA, rC      (rotate left)  
+000aaabbb1100ccc - rotr rA, rC      (rotate right)  
+000aaabbb1101ccc - sshr rA, rC      (arithmetic shift right)  
+000aaabbb1110ccc - shrc rA, rC      (shift right with carry)  
+000aaabbb1111ccc - shlc rA, rC      (shift left with carry)  
 
 ## addi
 

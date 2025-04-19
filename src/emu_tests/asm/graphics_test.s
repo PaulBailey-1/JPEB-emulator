@@ -1,7 +1,7 @@
   movi r3, 0xE000
-  movi r4, 0x0001
-  movi r5, 0x0100
-  movi r6, 0x0101
+  movi r4, 0x0001 
+  movi r5, 0x0100 
+  movi r6, 0x0101 
   sw r6, r3, 0
   sw r6, r3, 1
   movi r3, 0xE028 # 0xE000 + 40 (0x28)
