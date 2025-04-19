@@ -16,4 +16,16 @@ Framebuffer. Each entry contains two tiles. The plan is to use 640x480 resolutio
 
 0xF000 - 0xFFFF:  
 Other I/O. ps/2 keyboard, vga hscroll and vscroll register are all that is planned for now.  
-ps/2 at 0xF000, hscroll at 0xF001, vscroll at 0xF002
+ps/2 at 0xF000
+
+0xFFFC
+scale register (all screen items are displayed at 2\*\*n)
+
+0xFFFD
+horizontal scroll register (in pixels)
+
+0xFFFE
+vertical scroll register (in pixels)
+
+0xFFFF
+input stream (0 if nothing, otherwise ASCII)
