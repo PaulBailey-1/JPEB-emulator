@@ -64,35 +64,42 @@ LMOVE:
   movi r4, 0xFFFF
   lw r3, r4, 0 # get a key press
   movi r4, DIRECTION
+  lw r6, r4, 0 # copy original direction into r6
 
   movi r5, 119 # 'w'
   cmp r3, r5 # 'w'
   bne NOTW
   movi r3, 0x00FF
-  sw r3, r4, 0
-  jmp NOTD
+  jmp LKEY_PRESSED
 NOTW:
   movi r5, 97 # 'a'
   cmp r3, r5 # 'a'
   bne NOTA
   movi r3, 0xFF00
-  sw r3, r4, 0
-  jmp NOTD
+  jmp LKEY_PRESSED
 NOTA:
   movi r5, 115 # 's'
   cmp r3, r5 # 's'
   bne NOTS
   movi r3, 0x0001
-  sw r3, r4, 0
-  jmp NOTD
+  jmp LKEY_PRESSED
 NOTS:
   movi r5, 100 # 'd'
   cmp r3, r5 # 'd'
   bne NOTD
   movi r3, 0x0100
-  sw r3, r4, 0
-  jmp NOTD
+  jmp LKEY_PRESSED
 NOTD:
+  jmp LCLEAR_SNAKE # not a key press
+LKEY_PRESSED:
+  add r6, r6, r3
+  sw r6, r0, 0
+  sw r3, r0, 0
+  movi r5, 0xFEFF
+  and r6, r6, r5 # mask to see if 0
+  cmp r6, r0
+  bz LCLEAR_SNAKE # going in reversed direction
+  sw r3, r4, 0
 LCLEAR_SNAKE:
   # clear snake for redrawing
   movi r4, COLOR_STATE
@@ -108,7 +115,6 @@ LADVANCE_SNAKE:
   # perform move
   movi r4, DATA
   lw r5, r4, 0 # the original head of the snake
-
 
   # if next position is border, we die (i.e. if carry in y or x)
   # left and top overflow are equivalent to right and bottom overflow, resp
@@ -136,6 +142,14 @@ LEND_CHECKWALL:
   and r2, r2, r6 # get carry bit
   add r3, r3, r5 # r3 will store next position 
   sub r3, r3, r2
+
+  # if next position is part of snake (except tail), we die
+  # we are in a sweet spot here where none of the registers except r3 matter
+  push r7
+  call FIN_SNAKE
+  pop r7
+  cmp r4, r0
+  bz LFAIL_ADV
 
   movi r4, SNAKE_LENGTH
   lw r2, r4, 0
@@ -322,6 +336,24 @@ LMODULO_LOOP:
 LMODULO_END:
   jalr r0, r7      # return
 
+# expects the position to check for to be in r3
+# keeps the position in r3 and sets r4 to 0/non-0 for fail/success
+# doesn't check tail nor head
+FIN_SNAKE:
+  movi r2, SNAKE_LENGTH
+  lw r2, r2, 0
+  addi r2, r2, -2
+LIN_SNAKE:
+  movi r4, DATA
+  add r4, r4, r2
+  lw r4, r4, 0
+  sub r4, r3, r4
+  bz LIN_SNAKE_DONE
+  addi r2, r2, -1
+  bg LIN_SNAKE
+LIN_SNAKE_DONE:
+  jalr r0, r7
+
 # expects the end bound (exclusive) to be in r3
 # the end bound should be no more than 0xFF
 FRANDOM:
@@ -360,3 +392,11 @@ SNAKE_LENGTH:
   .fill 2
 
 FEND:
+  movi r4, 0xFFFF
+LEND_LISTEN:
+  lw r3, r4, 0
+  cmp r3, r0
+  bz LEND_LISTEN
+  movi r4, INIT
+  jalr r0, r4
+  sys EXIT
