@@ -13,7 +13,7 @@ valid_commands = ["add", "addi", "addc", "sub",
                   "movi", ".fill", ".space",
                   "jmp", "push", "pop",
                   "bnc", "call", 
-                  "bg", "bge", "bl", "ble", "swi"]
+                  "bg", "bge", "bl", "ble", "swi", "bno"]
 
 macros = ["movi", ".fill", ".space", "push", "pop", "call", "swi"]
 
@@ -68,6 +68,7 @@ instruction_dict = {
     "bae" : "110",
     "bb"  : "110",
     "bbe" : "110",
+    "bno" : "110",
 }
 
 alu_dict = {
@@ -108,7 +109,8 @@ branch_dict = {
     "ba"  : "001100",
     "bae" : "001101",
     "bb"  : "001110",
-    "bbe" : "001111"
+    "bbe" : "001111",
+    "bno" : "010000",
 }
 
 exception_dict = { 
