@@ -20,8 +20,8 @@ const TILE_MAP_SIZE : usize = 0x2000;
 const FRAME_BUFFER_START : usize = 0xE000;
 const FRAME_BUFFER_SIZE : usize = 0x1000;
 const IO_BUFFER_START : usize = 0xFFFF;
-const V_SCROLL_START : usize = 0xFFFD;
-const H_SCROLL_START : usize = 0xFFFE;
+const V_SCROLL_START : usize = 0xFFFE;
+const H_SCROLL_START : usize = 0xFFFD;
 const SCALE_REGISTER_START : usize = 0xFFFC; // each pixel is repeated 2^n times
 const SPRITE_MAP_START : usize = 0xA000;
 const SPRITE_MAP_SIZE : usize = 0x1000;
@@ -145,6 +145,9 @@ impl Memory {
         }
         if addr >= SPRITE_REGISTERS_START && addr < SPRITE_REGISTERS_START + SPIRTE_REGISTERS_SIZE {
             self.sprite_map.write().unwrap().set_sprite_reg((addr - SPRITE_REGISTERS_START) as u32, data);
+        }
+        if addr == 0 {
+            println!("Writing to address 0x0000: 0x{:04X}", data);
         }
         self.ram[addr] = data;
     }

@@ -2,13 +2,6 @@
 # r1 = stack pointer
 # r7 = return link
 
-PRESS_SPACE_TO_START:
-  movi r4, 0xFFFF
-  lw r4, r4, 0
-  movi r3, 0x20
-  cmp r4, r3
-  bne PRESS_SPACE_TO_START
-
 INIT:
   # color the entire background to green (4)
   movi r3, 0x0404
@@ -20,11 +13,6 @@ LBACKGROUND_INIT:
   sw r3, r4, 0
   cmp r5, r0
   bnz LBACKGROUND_INIT
-LAPPLE_INIT:
-  # push previous return address
-  push r7
-  call FGROW_APPLE
-  pop r7
 LSNAKE_INIT:
   # the data is stored at DATA
   # at offset 0 is the snake's body's coordinates
@@ -49,7 +37,7 @@ LSNAKE_INIT:
   pop r7
 LMOTION_INIT:
   movi r4, DIRECTION
-  movi r3, 0x00FF
+  movi r3, 0x0100
   sw r3, r4, 0
 MAIN:
   movi r4, LOOP_COUNT
@@ -93,65 +81,25 @@ NOTS:
   sw r3, r4, 0
   jmp NOTD
 NOTD:
-LCLEAR_SNAKE:
-  # clear snake for redrawing
-  movi r4, COLOR_STATE
-  movi r3, 4
-  sw r3, r4, 0
-  push r7
-  call FCOLOR_SNAKE
-  pop r7
 LADVANCE_SNAKE:
   # load next position
   movi r4, DIRECTION
-  lw r3, r4, 0  # the direction the snake was going
+  lw r3, r4, 0
   # perform move
   movi r4, DATA
-  lw r5, r4, 0 # the original head of the snake
-
-
-  # if next position is border, we die (i.e. if carry in y or x)
-  # left and top overflow are equivalent to right and bottom overflow, resp
-  # right overflow
-  add r2, r5, r3
-  movi r6, 0x5000
-  cmp r2, r6
-  bae LFAIL_ADV # too far right
-  # down overflow
-  movi r6, 0x00FF # we use this to mask out the y coordinate
-  and r2, r2, r6
-  movi r6, 0x3C
-  cmp r2, r6
-  bae LFAIL_ADV # too far down
-  jmp LEND_CHECKWALL
-LFAIL_ADV:
-  movi r4, FEND
-  jalr r0, r4
-LEND_CHECKWALL:
-  # correct for drift due to carry between y and x
-  movi r6, 0x00FF
-  and r6, r3, r6
-  addi r2, r6, 1
-  movi r6, 0x0100
-  and r2, r2, r6 # get carry bit
+  lw r5, r4, 0 # r4 is the head of the snake
+  add r2, r3, r0 # store the direction to determine carry bit
   add r3, r3, r5 # r3 will store next position 
-  sub r3, r3, r2
+  movi r6, 0x00FF # we use this to mask out carry bit
+  and r5, r5, r6
+  and r2, r2, r6
+  add r5, r5, r2
+  movi r6, 0x0100
+  and r5, r5, r6 # 0x0100 if carry bit otherwise 0x0000
+  sub r3, r3, r5
 
   movi r4, SNAKE_LENGTH
   lw r2, r4, 0
-  # if next position is apple, we increase snake length and generate another apple
-  movi r5, APPLE
-  lw r5, r5, 0
-  cmp r3, r5
-  bne LEND_CHECKAPPLE
-  # increase snake length
-  addi r2, r2, 1
-  sw r2, r4, 0
-  # generate apple
-  push r7
-  call FGROW_APPLE
-  pop r7
-LEND_CHECKAPPLE:
   movi r4, DATA
 LMOVE_FORWARD:
   lw r5, r4, 0
@@ -159,6 +107,8 @@ LMOVE_FORWARD:
   add r3, r0, r5
   addi r4, r4, 1
   addi r2, r2, -1
+  sw r4, r0, 0
+  sw r2, r0, 0
   bnz LMOVE_FORWARD
 
   movi r4, COLOR_STATE
@@ -204,7 +154,7 @@ FCOLOR_APPLE:
   add r4, r3, r4
   # check even/odd
   # get original value to OR with and store the OR'd result in r6
-  lw r3, r4, 0 # r3 is the original
+  lw r3, r4, 0
   cmp r5, r0
   bnz LENDEVEN
 
@@ -221,7 +171,15 @@ LENDEVEN:
   and r6, r3, r6
   movi r3, COLOR_STATE
   lw r3, r3, 0
-  shl r3, r3  # shl 8 bits
+  shl r3, r3
+  shl r3, r3
+  shl r3, r3
+  shl r3, r3
+  shl r3, r3
+  shl r3, r3
+  shl r3, r3
+  shl r3, r3
+  shl r3, r3
   shl r3, r3
   shl r3, r3
   shl r3, r3
@@ -257,97 +215,8 @@ LFILL:
   bnz LFILL
   jalr r0, r7 # return
 
-# places the apple in a location on-screen different from originally and not occupied by the snake
-# preserves all registers
-FGROW_APPLE:
-  push r2
-  push r3
-  push r4
-  push r5
-  push r6
-LGROW_LOOP:
-  # generate a new random location for apple x-location
-  movi r3, 0x50
-  push r7
-  call FRANDOM
-  pop r7
-  shl r3, r3
-  shl r3, r3
-  shl r3, r3
-  shl r3, r3
-  shl r3, r3
-  shl r3, r3
-  shl r3, r3
-  shl r3, r3
-  push r3
-  # generate a new random location for apple y-location
-  movi r3, 0x3c
-  push r7
-  call FRANDOM
-  pop r7
-  pop r5
-  add r5, r5, r3
-  movi r2, SNAKE_LENGTH
-  lw r2, r2, 0
-LNOTSNAKE_CHECK:
-  addi r2, r2, -1
-  movi r4, DATA
-  add r4, r2, r2
-  lw r3, r4, 0  # location of snake body part
-  cmp r3, r5
-  beq LGROW_LOOP # regenerate
-  cmp r2, r0
-  bne LNOTSNAKE_CHECK # check next part of snake
-  movi r4, COLOR_STATE # set color
-  sw r0, r4, 0
-  movi r4, APPLE
-  sw r5, r4, 0  # set apple location in memory to r5
-  add r4, r5, r0
-  push r7
-  call FCOLOR_APPLE
-  pop r7
-  pop r6
-  pop r5
-  pop r4
-  pop r3
-  pop r2
-  jalr r0, r7
-
-FMODULO:
-LMODULO_LOOP:
-  cmp r3, r4       # compare r3 (dividend) with r4 (divisor)
-  bl LMODULO_END  # if r3 < r4, exit loop
-  sub r3, r3, r4   # subtract r4 from r3
-  jmp LMODULO_LOOP # repeat
-LMODULO_END:
-  jalr r0, r7      # return
-
-# expects the end bound (exclusive) to be in r3
-# the end bound should be no more than 0xFF
-FRANDOM:
-  push r3
-  # Linear Congruential Generator (LCG)
-  movi r4, RANDOM_SEED
-  lw r3, r4, 0
-  movi r5, 0x4E6D  # Multiplier
-  xor r3, r3, r5
-  movi r5, 0x6073       # Increment
-  add r3, r3, r5
-  sw r3, r4, 0
-  # reduce the size of number
-  movi r4, 0xFF
-  and r3, r3, r4
-  # Modulo operation to get number in range
-  pop r4
-  push r7
-  call FMODULO
-  pop r7
-  jalr r0, r7
-
-RANDOM_SEED:
-  .fill 0x1023
 LOOP_COUNT: # the number of cycles to stall in the main loop
-  .fill 65000
+  .fill 40000
 DIRECTION:
   .fill 0x0001
 COLOR_STATE:
@@ -355,8 +224,6 @@ COLOR_STATE:
 DATA:
   .space 4800
 APPLE:
-  .fill 0x1024
+  .fill 0x281e
 SNAKE_LENGTH:
   .fill 2
-
-FEND:
