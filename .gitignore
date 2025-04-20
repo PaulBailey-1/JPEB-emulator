@@ -1,1 +1,4 @@
 /target
+c-compiler
+*.bin
+*.out

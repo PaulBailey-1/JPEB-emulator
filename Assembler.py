@@ -297,7 +297,7 @@ def generate_opcode(line_num, tokens, labels, label_addresses, address):
             opcode = ""
             for _ in range(n):
                 opcode += "0000\n"
-                return opcode
+            return opcode
         elif operation == "push":
             # dec sp, then store
             assert len(tokens) == 2, f"Error in line {line_num + 1}: push takes one argument"

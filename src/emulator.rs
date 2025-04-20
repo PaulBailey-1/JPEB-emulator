@@ -316,12 +316,11 @@ impl Emulator {
       9 => self.flags[2] == self.flags[3], // bge
       10 => self.flags[2] != self.flags[3] && !self.flags[1], // bl
       11 => self.flags[2] != self.flags[3] || self.flags[1], // ble
-
-      // TODO: figure out why these don't match the ROM
       12 => !self.flags[1] && self.flags[0], // ba
       13 => self.flags[0] || self.flags[1], // bae
       14 => !self.flags[0] && !self.flags[1], // bb
       15 => !self.flags[0] || self.flags[1], // bbe
+      16 => !self.flags[3], // bno
       _ => false
     };
 
