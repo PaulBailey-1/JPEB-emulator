@@ -2,24 +2,81 @@
 # r1 = stack pointer
 # r7 = return link
 
+INIT:
+  movi r3, 0x0000
+  movi r4, 0x05A4
+  call write_text_tilemap
+  # color the background to green (tile number 0)
+  movi r3, 0
+  movi r4, 0x05A4
+  call write_solid_tile
+  # color the snake yellow (tile number 1)
+  movi r3, 1
+  movi r4, 0x1FF
+  call write_solid_tile
+  # design the apple red (tile number 4)
+  movi r4, 0xC100
+  movi r3, 0x01F1
+  sw r3, r4, 4
+  sw r3, r4, 5
+  addi r4, r4, 8
+  sw r3, r4, 3
+  movi r3, 0x011F
+  sw r3, r4, 2
+  sw r3, r4, 4
+  sw r3, r4, 5
+  addi r4, r4, 8
+  sw r3, r4, 1
+  sw r3, r4, 2
+  sw r3, r4, 3
+  sw r3, r4, 4
+  sw r3, r4, 5
+  sw r3, r4, 6
+  addi r4, r4, 8
+  sw r3, r4, 1
+  sw r3, r4, 2
+  sw r3, r4, 3
+  sw r3, r4, 4
+  sw r3, r4, 5
+  sw r3, r4, 6
+  addi r4, r4, 8
+  sw r3, r4, 1
+  sw r3, r4, 2
+  sw r3, r4, 3
+  sw r3, r4, 4
+  sw r3, r4, 5
+  sw r3, r4, 6
+  addi r4, r4, 8
+  sw r3, r4, 1
+  sw r3, r4, 2
+  sw r3, r4, 3
+  sw r3, r4, 4
+  sw r3, r4, 5
+  sw r3, r4, 6
+  addi r4, r4, 8
+  sw r3, r4, 2
+  sw r3, r4, 3
+  sw r3, r4, 4
+  sw r3, r4, 5
+  call clear_screen
 PRESS_SPACE_TO_START:
+  movi r3, TPRESS_SPACE_TO_START
+  call print
+  # increase scale to see text
+  movi r4, 0xFFFC
+  movi r3, 2
+  sw r3, r4, 0
+LPRESS_SPACE_TO_START:
   movi r4, 0xFFFF
   lw r4, r4, 0
   movi r3, 0x20
   cmp r4, r3
-  bne PRESS_SPACE_TO_START
+  bne LPRESS_SPACE_TO_START
+  call clear_screen
+  # restore scale 
+  movi r4, 0xFFFC
+  sw r0, r4, 0
 
-INIT:
-  # color the entire background to green (4)
-  movi r3, 0x0404
-  movi r5, 0x1000
-LBACKGROUND_INIT:
-  addi r5, r5, -1
-  movi r4, 0xE000
-  add r4, r4, r5
-  sw r3, r4, 0
-  cmp r5, r0
-  bnz LBACKGROUND_INIT
 LAPPLE_INIT:
   # push previous return address
   push r7
@@ -58,8 +115,6 @@ LSTALL:
   addi r3, r3, -1
   bnz LSTALL
   lw r3, r4, 0
-  addi r3, r3, -1
-  sw r3, r4, 0
 LMOVE:
   movi r4, 0xFFFF
   lw r3, r4, 0 # get a key press
@@ -93,8 +148,6 @@ NOTD:
   jmp LCLEAR_SNAKE # not a key press
 LKEY_PRESSED:
   add r6, r6, r3
-  sw r6, r0, 0
-  sw r3, r0, 0
   movi r5, 0xFEFF
   and r6, r6, r5 # mask to see if 0
   cmp r6, r0
@@ -103,8 +156,7 @@ LKEY_PRESSED:
 LCLEAR_SNAKE:
   # clear snake for redrawing
   movi r4, COLOR_STATE
-  movi r3, 4
-  sw r3, r4, 0
+  sw r0, r4, 0
   push r7
   call FCOLOR_SNAKE
   pop r7
@@ -313,7 +365,8 @@ LNOTSNAKE_CHECK:
   cmp r2, r0
   bne LNOTSNAKE_CHECK # check next part of snake
   movi r4, COLOR_STATE # set color
-  sw r0, r4, 0
+  movi r3, 0x04
+  sw r3, r4, 0
   movi r4, APPLE
   sw r5, r4, 0  # set apple location in memory to r5
   add r4, r5, r0
@@ -326,15 +379,6 @@ LNOTSNAKE_CHECK:
   pop r3
   pop r2
   jalr r0, r7
-
-FMODULO:
-LMODULO_LOOP:
-  cmp r3, r4       # compare r3 (dividend) with r4 (divisor)
-  bl LMODULO_END  # if r3 < r4, exit loop
-  sub r3, r3, r4   # subtract r4 from r3
-  jmp LMODULO_LOOP # repeat
-LMODULO_END:
-  jalr r0, r7      # return
 
 # expects the position to check for to be in r3
 # keeps the position in r3 and sets r4 to 0/non-0 for fail/success
@@ -372,10 +416,9 @@ FRANDOM:
   # Modulo operation to get number in range
   pop r4
   push r7
-  call FMODULO
+  call umod
   pop r7
   jalr r0, r7
-
 RANDOM_SEED:
   .fill 0x1023
 LOOP_COUNT: # the number of cycles to stall in the main loop
@@ -390,13 +433,81 @@ APPLE:
   .fill 0x1024
 SNAKE_LENGTH:
   .fill 2
-
+HIGH_SCORE:
+  .fill 0
+TPRESS_SPACE_TO_START:
+  .fill 0x50
+  .fill 0x52
+  .fill 0x45
+  .fill 0x53
+  .fill 0x53
+  .fill 0x20
+  .fill 0x53
+  .fill 0x50
+  .fill 0x41
+  .fill 0x43
+  .fill 0x45
+  .fill 0x20
+  .fill 0x54
+  .fill 0x4F
+  .fill 0x20
+  .fill 0x53
+  .fill 0x54
+  .fill 0x41
+  .fill 0x52
+  .fill 0x54
+  .fill 0x00
+TSCORE:
+  .fill 0x53
+  .fill 0x43
+  .fill 0x4F
+  .fill 0x52
+  .fill 0x45
+  .fill 0x20
+  .fill 0x00
 FEND:
-  movi r4, 0xFFFF
-LEND_LISTEN:
+  movi r3, TSCORE
+  call print
+  movi r4, SNAKE_LENGTH
   lw r3, r4, 0
-  cmp r3, r0
-  bz LEND_LISTEN
-  movi r4, INIT
+  addi r3, r3, -2
+  push r3
+  call print_unsigned
+  # determine if new high score
+  movi r4, HIGH_SCORE
+  lw r4, r4, 0
+  pop r3
+  cmp r3, r4
+  ble LNOT_HIGH_SCORE
+  call FHIGH_SCORE
+LNOT_HIGH_SCORE:
+  movi r3, 0x0A
+  call putchar
+  # increase scale to see score
+  movi r4, 0xFFFC
+  movi r3, 2
+  sw r3, r4, 0
+  movi r4, PRESS_SPACE_TO_START
   jalr r0, r4
   sys EXIT
+
+FHIGH_SCORE:
+  movi r4, HIGH_SCORE
+  sw r3, r4, 0
+  # summoning high score sign
+  movi r4, 0xFFE0
+  movi r3, 304
+  sw r3, r4, 0
+  movi r3, 0
+LHIGH_SCORE_DROP:
+  addi r3, r3, 1
+  sw r3, r4, 1
+  movi r2, LOOP_COUNT
+  lw r2, r2, 0
+LHIGH_SCORE_STALL:
+  addi r2, r2, -1
+  bnz LHIGH_SCORE_STALL
+  movi r2, 480
+  cmp r2, r3
+  bnz LHIGH_SCORE_DROP
+  jalr r0, r7

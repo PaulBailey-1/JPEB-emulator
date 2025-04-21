@@ -381,9 +381,9 @@ impl SpriteMap {
     pub fn get_sprite_reg(&self, addr: u32) -> u16 {
         let sprite = &self.sprites[(addr / 2) as usize];
         if addr % 2 == 0 {
-            return sprite.y;
-        } else {
             return sprite.x;
+        } else {
+            return sprite.y;
         }
     }
 
@@ -391,9 +391,9 @@ impl SpriteMap {
     pub fn set_sprite_reg(&mut self, addr: u32, data: u16) {
         let sprite = &mut self.sprites[(addr / 2) as usize];
         if addr % 2 == 0 {
-            sprite.y = data;
-        } else {
             sprite.x = data;
+        } else {
+            sprite.y = data;
         }
     }
 }
