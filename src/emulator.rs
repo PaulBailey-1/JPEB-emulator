@@ -15,7 +15,7 @@ pub struct Emulator {
 }
 
 impl Emulator {
-  pub fn new(path: String) -> Emulator {
+  pub fn new(path: &str, datapath: &str) -> Emulator {
     // read in binary file
     let bytes = std::fs::read(path).unwrap();
 
@@ -27,10 +27,11 @@ impl Emulator {
       let short = u16::from_le_bytes([byte_pair[0], byte_pair[1]]);
       instructions.push(short);
     }
+    let mem: Memory = Memory::new(instructions, datapath);
 
     Emulator {
       regfile: [0, 0, 0, 0, 0, 0, 0, 0],
-      memory: Memory::new(instructions),
+      memory: mem,
       pc: 0,
       flags: [false, false, false, false],
       halted: false,
@@ -347,7 +348,7 @@ impl Emulator {
           print!("{}", character);
           self.pc += 1;
         },
-        _ => panic!("Invalid Exception code")
+        _ => panic!("Invalid Exception code {exc_code:#x} from {args:#x}")
       }
     } else {
       // this is a jalr
