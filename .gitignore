@@ -2,3 +2,4 @@
 c-compiler
 *.bin
 *.out
+/.vscode
