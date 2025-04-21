@@ -243,7 +243,7 @@ impl TileMap {
         }
         let map = TileMap{tiles};
         let mut path = PathBuf::from(filename);
-        path.set_extension(".hex");
+        path.set_extension("hex");
         map.save_hex_map(path.to_str().unwrap()).expect("Failed to save hex tile map");
         return map;
     }
@@ -338,7 +338,7 @@ impl SpriteMap {
         sprites.truncate(SPRITES_NUM as usize);
         let map = SpriteMap{sprites};
         let mut path = PathBuf::from(filename);
-        path.set_extension(".hex");
+        path.set_extension("hex");
         map.save_hex_map(path.to_str().unwrap()).expect("Failed to save hex sprite map");
         return map;
     }
