@@ -77,7 +77,7 @@ impl Emulator {
     });
 
     if with_graphics {
-      graphics.unwrap().start(finished, true);
+      graphics.unwrap().start(finished, false);
     }
     handle.join().unwrap();
 

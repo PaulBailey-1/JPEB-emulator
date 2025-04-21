@@ -13,9 +13,9 @@ valid_commands = ["add", "addi", "addc", "sub",
                   "movi", ".fill", ".space",
                   "jmp", "push", "pop",
                   "bnc", "call", 
-                  "bg", "bge", "bl", "ble", "swi", "bno", "ret"]
+                  "bg", "bge", "bl", "ble", "swi", "bno"]
 
-macros = ["movi", ".fill", ".space", "push", "pop", "call", "swi", "ret"]
+macros = ["movi", ".fill", ".space", "push", "pop", "call", "swi"]
 
 # types of instructions reg reg imm, reg reg reg, reg reg 
 rri_type = ["addi", "sw", "lw"]
@@ -361,8 +361,6 @@ def generate_opcode(line_num, tokens, labels, label_addresses, address):
             opcode3 += "0000000"
             opcode3 = hex(int(opcode3, 2))[2:].zfill(4) + '\n'
             return opcode + opcode2 + opcode3
-        elif operation == "ret":
-            opcode += "1110001110000000"
         else:
             raise BaseException(f"Macro '{operation}' has no definition")
     else:
