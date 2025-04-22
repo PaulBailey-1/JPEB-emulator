@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 
 use std::fs::File;
 use std::io::Write;
+use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 pub const STACK_START : usize = 0xA000;
@@ -68,7 +69,7 @@ pub struct Sprite {
 
 impl Memory {
 
-    pub fn new(ram_init: Vec<u16>) -> Memory {
+    pub fn new(ram_init: Vec<u16>, datapath: &str) -> Memory {
         // Fill ram to size of address space
         let mut ram = ram_init;
         ram.resize(1 << 16, 0);
@@ -76,12 +77,12 @@ impl Memory {
         Memory {
             ram,
             frame_buffer: Arc::new(RwLock::new(FrameBuffer::new(FRAME_WIDTH, FRAME_HEIGHT))),
-            tile_map: Arc::new(RwLock::new(TileMap::load("tilemap.bmp"))),
+            tile_map: Arc::new(RwLock::new(TileMap::load(&format!("{datapath}/tilemap.bmp")))),
             io_buffer: Arc::new(RwLock::new(VecDeque::new())),
             vscroll_register: Arc::new(RwLock::new(0)),
             hscroll_register: Arc::new(RwLock::new(0)),
             scale_register: Arc::new(RwLock::new(0)),
-            sprite_map: Arc::new(RwLock::new(SpriteMap::load("spritemap.bmp")))
+            sprite_map: Arc::new(RwLock::new(SpriteMap::load(&format!("{datapath}/spritemap.bmp"))))
         }
     }
 
@@ -241,12 +242,14 @@ impl TileMap {
             }
         }
         let map = TileMap{tiles};
-        map.save_hex_map().expect("Failed to save hex tile map");
+        let mut path = PathBuf::from(filename);
+        path.set_extension("hex");
+        map.save_hex_map(path.to_str().unwrap()).expect("Failed to save hex tile map");
         return map;
     }
 
-    pub fn save_bin_map(&self) {
-        let mut file = File::create("tilemap.bin").expect("Failed to open bin output");
+    pub fn save_bin_map(&self, filename: &str) {
+        let mut file = File::create(filename).expect("Failed to open bin output");
         let mut data: Vec<u8> = vec![];
         for tile in &self.tiles {
             for py in 0..TILE_SIZE {
@@ -260,8 +263,8 @@ impl TileMap {
         file.write_all(data.as_slice()).expect("Failed to write to bin");
     }
 
-    pub fn save_hex_map(&self) -> Result<(), std::io::Error> {
-        let mut file = File::create("tilemap.hex")?;
+    pub fn save_hex_map(&self, filename: &str) -> Result<(), std::io::Error> {
+        let mut file = File::create(filename)?;
         file.write(b"@0\n")?;
         for tile in &self.tiles {
             for py in 0..TILE_SIZE {
@@ -334,12 +337,14 @@ impl SpriteMap {
         // only store the first 8 sprites
         sprites.truncate(SPRITES_NUM as usize);
         let map = SpriteMap{sprites};
-        map.save_hex_map().expect("Failed to save hex sprite map");
+        let mut path = PathBuf::from(filename);
+        path.set_extension("hex");
+        map.save_hex_map(path.to_str().unwrap()).expect("Failed to save hex sprite map");
         return map;
     }
 
-    pub fn save_bin_map(&self) {
-        let mut file = File::create("spritemap.bin").expect("Failed to open sprite output");
+    pub fn save_bin_map(&self, filename: &str) {
+        let mut file = File::create(filename).expect("Failed to open sprite output");
         let mut data: Vec<u8> = vec![];
         for sprite in &self.sprites {
             for py in 0..SPRITE_SIZE {
@@ -353,8 +358,8 @@ impl SpriteMap {
         file.write_all(data.as_slice()).expect("Failed to write to bin");
     }
 
-    pub fn save_hex_map(&self) -> Result<(), std::io::Error> {
-        let mut file = File::create("spritemap.hex")?;
+    pub fn save_hex_map(&self, filename: &str) -> Result<(), std::io::Error> {
+        let mut file = File::create(filename)?;
         file.write(b"@0\n")?;
         for sprite in &self.sprites {
             for py in 0..SPRITE_SIZE {
