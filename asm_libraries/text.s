@@ -342,3 +342,42 @@ print.for.0.break:
 	lw r2  r2  0
 	addi r1  r1  2
 	jalr r0  r7 
+
+draw_line:
+    # Prologue: save r7, r6
+    sw r7 r1 -1
+    sw r6 r1 -2
+    addi r1 r1 -2
+
+    # Store Y in r6
+    mov r6 r4
+
+    # Set X = 0
+    movi r5 0
+
+    # Set loop counter = 20
+    movi r2 80
+
+draw_line_loop:
+    # Draw '-'
+    movi r3 45      # ASCII '-'
+
+    # putchar(r3=char, r4=x, r5=y)
+    mov r4 r5       # x
+    mov r5 r6       # y
+    call putchar
+
+    # Restore r5 = x
+    mov r5 r4
+    addi r5 r5 1     # x++
+
+    addi r2 r2 -1
+    cmp r2 r0
+    bne draw_line_loop
+
+draw_line_done:
+    # Epilogue
+    addi r1 r1 2
+    lw r7 r1 -1
+    lw r6 r1 -2
+    jalr r0 r7
