@@ -25,7 +25,7 @@ const V_SCROLL_START : usize = 0xFFFE;
 const H_SCROLL_START : usize = 0xFFFD;
 const SCALE_REGISTER_START : usize = 0xFFFC; // each pixel is repeated 2^n times
 const SPRITE_MAP_START : usize = 0xA000;
-const SPRITE_MAP_SIZE : usize = 0x1000;
+const SPRITE_MAP_SIZE : usize = 0x2000;
 const SPRITE_REGISTERS_START : usize = 0xFFE0;  // every consecutive pair of words correspond to 
 const SPIRTE_REGISTERS_SIZE : usize = 0x10;     // the y and x coordinates, respectively of a sprite
 
