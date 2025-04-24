@@ -1,5 +1,7 @@
 use std::collections::VecDeque;
 
+use std::u16;
+use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
@@ -68,11 +70,30 @@ pub struct Sprite {
 }
 
 impl Memory {
-
     pub fn new(ram_init: Vec<u16>, datapath: &str) -> Memory {
         // Fill ram to size of address space
         let mut ram = ram_init;
         ram.resize(1 << 16, 0);
+
+        let binding = fs::read_to_string(&format!("{datapath}/mem.hex")).unwrap();
+        let mem_text = binding.lines();
+        let mut index: u16 = 0;
+        for line in mem_text {
+            let mut modified_line = line;
+            if line.contains("//") {
+                modified_line = line.split("//").next().unwrap();
+            }
+
+            if modified_line.starts_with("@") {
+                index = u16::from_str_radix(&modified_line[1..], 10).unwrap();
+            } else {
+                let value = u16::from_str_radix(modified_line, 16);
+                if !value.is_err() {
+                    ram[index as usize] = value.unwrap();
+                    index = index + 1;
+                }
+            }
+        }
 
         Memory {
             ram,
