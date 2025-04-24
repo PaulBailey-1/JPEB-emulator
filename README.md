@@ -1,6 +1,6 @@
 # JPEB Emulator
 
-This is an emulator for programs written or compiled to JPEB assembly.
+This is an emulator for programs written or compiled to JPEB assembly. We built off [this emulator](https://github.com/b-Rocks2718/c-compiler/tree/master/src) by adding graphics and keyboard input.
 
 ## Building
 1. [Install Rust and Cargo](https://www.rust-lang.org/tools/install)  
