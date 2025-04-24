@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use std::fs::File;
-use std::io::Write;
+use std::io::{self, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
@@ -20,7 +20,8 @@ const TILE_MAP_START : usize = 0xC000;
 const TILE_MAP_SIZE : usize = 0x2000;
 const FRAME_BUFFER_START : usize = 0xE000;
 const FRAME_BUFFER_SIZE : usize = 0x1000;
-const IO_BUFFER_START : usize = 0xFFFF;
+const PS2_STREAM : usize = 0xFFFF;
+const UART_TX : usize = 0xF000;
 const V_SCROLL_START : usize = 0xFFFE;
 const H_SCROLL_START : usize = 0xFFFD;
 const SCALE_REGISTER_START : usize = 0xFFFC; // each pixel is repeated 2^n times
@@ -101,7 +102,7 @@ impl Memory {
         if addr >= FRAME_BUFFER_START && addr < FRAME_BUFFER_START + FRAME_BUFFER_SIZE {
             return self.frame_buffer.read().unwrap().get_tile_pair((addr - FRAME_BUFFER_START) as u32);
         }
-        if addr == IO_BUFFER_START {
+        if addr == PS2_STREAM {
             return self.io_buffer.write().unwrap().pop_front().unwrap_or(0);
         }
         if addr >= SPRITE_MAP_START && addr < SPRITE_MAP_START + SPRITE_MAP_SIZE {
@@ -119,6 +120,9 @@ impl Memory {
         if addr == SCALE_REGISTER_START {
             return *self.scale_register.read().unwrap();
         }
+        if addr == UART_TX {
+            panic!("attempting to read output port (address {})", UART_TX);
+        }
         return self.ram[addr];
     }
 
@@ -129,8 +133,12 @@ impl Memory {
         if addr >= FRAME_BUFFER_START && addr < FRAME_BUFFER_START + FRAME_BUFFER_SIZE {
             self.frame_buffer.write().unwrap().set_tile_pair((addr - FRAME_BUFFER_START) as u32, data);
         }
-        if addr == IO_BUFFER_START {
-            panic!("attempting to write to read input port (address {})", IO_BUFFER_START);
+        if addr == PS2_STREAM {
+            panic!("attempting to write to read input port (address {})", PS2_STREAM);
+        }
+        if addr == UART_TX {
+            print!("{}", (data as u8) as char);
+            io::stdout().flush().unwrap();
         }
         if addr == V_SCROLL_START {
             *self.vscroll_register.write().unwrap() = data;
@@ -156,7 +164,8 @@ impl Memory {
 
 impl FrameBuffer {
     pub fn new(frame_width: u32, frame_height: u32) -> Self {
-        let width = frame_width / TILE_SIZE;
+        // let width = frame_width / TILE_SIZE;
+        let width = 128;
         let height = frame_height / TILE_SIZE;
         FrameBuffer {
             width,
