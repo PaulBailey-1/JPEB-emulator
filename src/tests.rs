@@ -274,3 +274,10 @@ fn collatz_test() {
   let result = cpu.run(false);
   assert_eq!(result, 9232);
 }
+
+#[test]
+fn load_test() {
+  let cpu = Emulator::new("../tests/bin/load_test.bin", DATA_PATH);
+  let result = cpu.run(false);
+  assert_eq!(result, 0x0FFF);
+}
