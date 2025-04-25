@@ -12,6 +12,7 @@ pub struct Emulator {
   pc : u16,
   flags : [bool; 4], // flags are: carry | zero | sign | overflow
   halted : bool,
+  cycle_count : u64,
 }
 
 impl Emulator {
@@ -35,6 +36,7 @@ impl Emulator {
       pc: 0,
       flags: [false, false, false, false],
       halted: false,
+      cycle_count: 0,
     }
   }
 
@@ -70,10 +72,12 @@ impl Emulator {
         while !self.halted {
           let instruction = self.memory.read(usize::from(self.pc));
           self.execute(instruction);
+          self.cycle_count += 1;
         }
         // return the value in r3
         *ret_clone.lock().unwrap() = self.regfile[3];
         *finished_clone.lock().unwrap() = true;
+        println!("{}", self.cycle_count);
       }
     });
 
